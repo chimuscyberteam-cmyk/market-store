@@ -26,7 +26,7 @@ export default function PostItem() {
   const router = useRouter();
   const { user, accessToken, loading: authLoading } = useAuth();
 
-  const [categoryId, setCategoryId] = useState(1);
+  const [categoryId, setCategoryId] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -70,6 +70,10 @@ export default function PostItem() {
   }
 
   async function submit() {
+    if (!categoryId) {
+      Alert.alert('Pick a category', 'Tap a category chip above to choose one.');
+      return;
+    }
     if (!title || !price) {
       Alert.alert('Missing fields', 'Title and price are required.');
       return;
@@ -121,7 +125,7 @@ export default function PostItem() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <Text style={styles.label}>Category</Text>
+      <Text style={styles.label}>Category *</Text>
       <View style={styles.catGrid}>
         {CATEGORIES.map((c) => (
           <TouchableOpacity
