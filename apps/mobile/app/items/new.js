@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { apiFetch } from '../../lib/api';
+import { uploadImage } from '../../lib/upload';
 import { useAuth } from '../../lib/AuthContext';
 
 const CATEGORIES = [
@@ -86,7 +87,17 @@ export default function PostItem() {
         return;
       }
 
-      const data = await apiFetch('/api/items', {
+      let imageUrls = [];
+      if (image) {
+        try {
+          const url = await uploadImage(image);
+          imageUrls = [url];
+        } catch (e) {
+          Alert.alert('Image upload failed', e.message + '\n\nPosting without photo.');
+        }
+      }
+
+      await apiFetch('/api/items', {
         method: 'POST',
         token: accessToken,
         body: {
@@ -94,7 +105,7 @@ export default function PostItem() {
           title: title.trim(),
           description: description.trim(),
           priceZmw: priceNum,
-          imageUrls: [],
+          imageUrls,
           latitude: coords.lat,
           longitude: coords.lng
         }
@@ -159,7 +170,7 @@ export default function PostItem() {
           <Text style={styles.imagePlaceholder}>Tap to pick photo</Text>
         )}
       </TouchableOpacity>
-      <Text style={styles.hint}>(image upload coming soon — items post without photos for now)</Text>
+      <Text style={styles.hint}>(JPG or PNG · uploaded to Cloudinary)</Text>
 
       <Text style={styles.label}>Location</Text>
       <TouchableOpacity style={styles.locationBtn} onPress={useMyLocation}>
