@@ -13,3 +13,6 @@ minimumReleaseAgeExclude:
   - expo-modules-core@57.0.23
   - expo-router@57.0.27
   - expo@57.0.29
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
