@@ -4,8 +4,8 @@ import {
   ActivityIndicator, RefreshControl, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../lib/AuthContext';
 import { zmw, timeAgo } from '../lib/format';
 
 export default function Home() {
@@ -51,10 +51,19 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
+      {user ? (
+        <TouchableOpacity
+          style={styles.ordersBar}
+          onPress={() => router.push('/orders')}
+        >
+          <Text style={styles.ordersBarText}>My orders & selling →</Text>
+        </TouchableOpacity>
+      ) : null}
+
       {error ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>Couldn't reach API: {error}</Text>
-          <Text style={styles.errorHint}>Is the API running? Is the phone on the same Wi-Fi?</Text>
+          <Text style={styles.errorHint}>Is the API running? Same Wi-Fi?</Text>
         </View>
       ) : null}
 
@@ -91,6 +100,7 @@ export default function Home() {
           </TouchableOpacity>
         )}
       />
+
       {user ? (
         <TouchableOpacity
           style={styles.fab}
@@ -107,7 +117,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   muted: { color: '#888', marginTop: 8 },
-  list: { padding: 8, paddingBottom: 24 },
+  ordersBar: {
+    backgroundColor: 'white', paddingVertical: 12, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: '#e5e7eb', alignItems: 'flex-end'
+  },
+  ordersBarText: { color: '#059669', fontWeight: '700' },
+  list: { padding: 8, paddingBottom: 100 },
   row: { gap: 8, marginBottom: 8 },
   card: {
     flex: 1, backgroundColor: 'white', borderRadius: 12,
@@ -115,19 +130,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2
   },
   cardImage: { width: '100%', aspectRatio: 1, borderRadius: 8, marginBottom: 8 },
-  cardImagePlaceholder: {
-    backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center'
-  },
+  cardImagePlaceholder: { backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' },
   cardImageText: { fontSize: 48, color: '#9ca3af', fontWeight: 'bold' },
   cardTitle: { fontSize: 14, fontWeight: '600' },
   cardPrice: { fontSize: 16, fontWeight: '700', color: '#059669', marginTop: 4 },
   cardMeta: { fontSize: 11, color: '#888', marginTop: 4 },
   empty: { padding: 40, alignItems: 'center' },
   emptyTitle: { fontSize: 18, fontWeight: '600' },
-  errorBox: {
-    backgroundColor: '#fee2e2', padding: 12, margin: 8,
-    borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5'
-  },
+  errorBox: { backgroundColor: '#fee2e2', padding: 12, margin: 8, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' },
   errorText: { color: '#991b1b', fontWeight: '600' },
   errorHint: { color: '#991b1b', fontSize: 12, marginTop: 4 },
   fab: {
