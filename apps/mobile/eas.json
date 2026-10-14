@@ -13,12 +13,14 @@
         "EXPO_PUBLIC_API_URL": "https://market-store-api.onrender.com",
         "EXPO_PUBLIC_CLOUDINARY_CLOUD": "rxept7vj",
         "EXPO_PUBLIC_CLOUDINARY_PRESET": "market-store-unsigned"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "channel": "production"
     }
   }
 }
