@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert, Image
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { apiFetch } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { zmw, metersLabel, timeAgo } from '../../lib/format';
@@ -86,7 +86,6 @@ export default function Orders() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Orders' }} />
 
       <View style={styles.tabs}>
         <TouchableOpacity
