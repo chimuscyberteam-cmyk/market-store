@@ -4,11 +4,13 @@ import {
   ActivityIndicator, RefreshControl, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/api';
 import { zmw, timeAgo } from '../lib/format';
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,6 +91,14 @@ export default function Home() {
           </TouchableOpacity>
         )}
       />
+      {user ? (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/items/new')}
+        >
+          <Text style={styles.fabText}>+ Post item</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -119,5 +129,12 @@ const styles = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5'
   },
   errorText: { color: '#991b1b', fontWeight: '600' },
-  errorHint: { color: '#991b1b', fontSize: 12, marginTop: 4 }
+  errorHint: { color: '#991b1b', fontSize: 12, marginTop: 4 },
+  fab: {
+    position: 'absolute', bottom: 24, right: 16,
+    backgroundColor: '#059669', paddingHorizontal: 20, paddingVertical: 14,
+    borderRadius: 28, shadowColor: '#000', shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 4
+  },
+  fabText: { color: 'white', fontWeight: '700', fontSize: 15 }
 });
