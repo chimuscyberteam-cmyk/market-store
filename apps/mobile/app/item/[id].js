@@ -6,11 +6,14 @@ import {
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import * as Location from 'expo-location';
 import { apiFetch } from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
 import { zmw, metersLabel } from '../../lib/format';
 
 export default function ItemDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user, accessToken } = useAuth();
+
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -54,6 +57,63 @@ export default function ItemDetail() {
       setQuoting(false);
     }
   }, [id]);
+
+  const buyNow = useCallback(async () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    try {
+      setQuoting(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Allow location so we can quote delivery.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const quoteData = await apiFetch('/api/orders/quote', {
+        method: 'POST',
+        body: {
+          itemId: id,
+          deliveryLat: loc.coords.latitude,
+          deliveryLng: loc.coords.longitude
+        }
+      });
+      Alert.alert(
+        'Confirm order',
+        `Item: ${zmw(quoteData.itemPriceZmw)}\nDelivery: ${zmw(quoteData.deliveryFeeZmw)}\n\nTotal: ${zmw(quoteData.totalZmw)}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Place order',
+            onPress: async () => {
+              try {
+                await apiFetch('/api/orders', {
+                  method: 'POST',
+                  token: accessToken,
+                  body: {
+                    itemId: id,
+                    deliveryLat: loc.coords.latitude,
+                    deliveryLng: loc.coords.longitude,
+                    paymentMethod: 'pod'
+                  }
+                });
+                Alert.alert('Order placed', 'Check Orders tab for status.', [
+                  { text: 'OK', onPress: () => router.push('/orders') }
+                ]);
+              } catch (e) {
+                Alert.alert('Error', e.message);
+              }
+            }
+          }
+        ]
+      );
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setQuoting(false);
+    }
+  }, [id, user, accessToken, router]);
 
   if (loading) {
     return (
@@ -99,12 +159,20 @@ export default function ItemDetail() {
 
         <View style={styles.actions}>
           <TouchableOpacity
+            style={[styles.button, styles.buttonBuy]}
+            onPress={buyNow}
+            disabled={quoting}
+          >
+            <Text style={styles.buttonText}>Buy now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.button}
             onPress={calculateFee}
             disabled={quoting}
           >
             <Text style={styles.buttonText}>
-              {quoting ? 'Calculating...' : 'Calculate delivery to my location'}
+              {quoting ? 'Calculating...' : 'Calculate delivery'}
             </Text>
           </TouchableOpacity>
 
@@ -151,6 +219,7 @@ const styles = StyleSheet.create({
   desc: { fontSize: 15, lineHeight: 22, color: '#111827' },
   actions: { marginTop: 28, gap: 10 },
   button: { backgroundColor: '#059669', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  buttonBuy: { backgroundColor: '#2563eb' },
   buttonSecondary: { backgroundColor: 'white', borderWidth: 2, borderColor: '#059669' },
   buttonText: { color: 'white', fontWeight: '700', fontSize: 15 },
   buttonTextSecondary: { color: '#059669' },
