@@ -23,6 +23,12 @@
         "projectId": "32a936bc-0998-4811-800a-8d9a6330508e"
       }
     },
-    "owner": "musoleo12s-team"
+    "owner": "musoleo12s-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/32a936bc-0998-4811-800a-8d9a6330508e"
+    }
   }
 }
