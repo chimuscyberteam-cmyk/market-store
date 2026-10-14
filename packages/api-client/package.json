@@ -4,5 +4,5 @@
   "type": "module",
   "main": "src/index.js",
   "exports": { ".": "./src/index.js" },
-  "dependencies": { "@market-store/shared": "*" }
+  "dependencies": { "@market-store/shared": "workspace:*" }
 }

@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Market Store",
+    "slug": "market-store",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "marketstore",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "android": {
+      "package": "zm.marketstore.app"
+    },
+    "ios": {
+      "bundleIdentifier": "zm.marketstore.app",
+      "supportsTablet": true
+    },
+    "plugins": ["expo-router"]
+  }
+}
