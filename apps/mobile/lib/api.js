@@ -1,9 +1,19 @@
 import Constants from 'expo-constants';
 
-const metroHost = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
-export const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? `http://${metroHost}:4000`;
+// In dev (Expo Go), derive from Metro's host. In production APK, MUST use env var.
+function resolveBase() {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  if (__DEV__) {
+    const host = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
+    return `http://${host}:4000`;
+  }
+  throw new Error('EXPO_PUBLIC_API_URL is not set. Rebuild with env var.');
+}
 
-// In-memory session state, kept in sync by AuthContext
+export const API_BASE = resolveBase();
+
 let currentToken = null;
 let currentRefreshToken = null;
 let onTokensUpdated = null;
@@ -42,7 +52,6 @@ export async function apiFetch(path, { method = 'GET', body, token, _retried } =
     body: body ? JSON.stringify(body) : undefined
   });
 
-  // Auto-refresh on expired access token
   if (res.status === 401 && !_retried) {
     const refreshed = await tryRefresh();
     if (refreshed) {

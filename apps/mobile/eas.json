@@ -8,7 +8,12 @@
       "android": {
         "buildType": "apk"
       },
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://market-store-api.onrender.com",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD": "rxept7vj",
+        "EXPO_PUBLIC_CLOUDINARY_PRESET": "market-store-unsigned"
+      }
     },
     "production": {
       "android": {
