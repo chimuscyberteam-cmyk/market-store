@@ -157,6 +157,16 @@ export default function ItemDetail() {
             <button onClick={buyNow} disabled={busy} className="btn-primary disabled:opacity-60">
               {busy ? 'Working…' : 'Buy now'}
             </button>
+
+            {user && user.id !== item.seller_id ? (
+              <button
+                onClick={() => router.push(`/chat/${id}/${item.seller_id}`)}
+                className="btn-outline"
+              >
+                💬 Chat with seller
+              </button>
+            ) : null}
+
             <button onClick={calculateFee} disabled={busy} className="btn-outline">
               Calculate delivery to my location
             </button>
