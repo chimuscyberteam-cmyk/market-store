@@ -124,6 +124,9 @@ export default function Header() {
                       <MenuLink href="/messages" icon="💬">
                         Messages
                       </MenuLink>
+                      <MenuLink href="/settings" icon="⚙️">
+                        Settings
+                      </MenuLink>
                       <button
                         onClick={handleSignOut}
                         className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-3"

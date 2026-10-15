@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { canPostItems } from '@market-store/shared';
 
 const CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD || 'rxept7vj';
 const PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'market-store-unsigned';
