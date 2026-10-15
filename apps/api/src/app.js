@@ -8,6 +8,8 @@ import categoryRoutes from './routes/categories.routes.js';
 import itemRoutes from './routes/items.routes.js';
 import orderRoutes from './routes/orders.routes.js';
 import chatRoutes from './routes/chat.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import userRoutes from './routes/users.routes.js';
 import { notFound, errorHandler } from './middleware/error.js';
 
 export function createApp() {
@@ -23,6 +25,8 @@ export function createApp() {
   app.use('/api/items', itemRoutes);
   app.use('/api/orders', orderRoutes);
   app.use('/api/chat', chatRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/users', userRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

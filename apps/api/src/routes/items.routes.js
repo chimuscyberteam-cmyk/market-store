@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ const createSchema = z.object({
   longitude: z.number().min(-180).max(180)
 });
 
-router.post('/', requireAuth, async (req, res, next) => {
+router.post('/', requireAuth, requireRole('seller', 'admin'), async (req, res, next) => {
   try {
     const d = createSchema.parse(req.body);
     const { rows } = await pool.query(
@@ -75,7 +75,7 @@ router.get('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.patch('/:id/status', requireAuth, async (req, res, next) => {
+router.patch('/:id/status', requireAuth, requireRole('seller', 'admin'), async (req, res, next) => {
   try {
     const { status } = z.object({ status: z.enum(['active', 'sold', 'removed']) }).parse(req.body);
     const { rows } = await pool.query(
