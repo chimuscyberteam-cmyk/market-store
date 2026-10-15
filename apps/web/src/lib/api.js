@@ -29,16 +29,55 @@ export function setUser(u) {
   localStorage.setItem('ms.user', JSON.stringify(u));
 }
 
-export async function apiFetch(path, { method = 'GET', body, auth = true, _retried } = {}) {
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function safeJson(res) {
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: `Server returned ${res.status}` };
+  }
+}
+
+export async function apiFetch(path, {
+  method = 'GET',
+  body,
+  auth = true,
+  _retried = false,
+  _wakeAttempt = 0
+} = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (auth) {
     const t = getToken();
     if (t) headers.Authorization = `Bearer ${t}`;
   }
-  const res = await fetch(`${API_URL}${path}`, {
-    method, headers, body: body ? JSON.stringify(body) : undefined
-  });
 
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (netErr) {
+    // Network-level failure (offline, DNS, CORS)
+    throw new Error(`Network error: ${netErr.message}`);
+  }
+
+  // Render free-tier cold start: 502/503/504 while waking up. Retry a few times.
+  if ((res.status === 502 || res.status === 503 || res.status === 504) && _wakeAttempt < 4) {
+    const wait = 2000 + _wakeAttempt * 1500; // 2s, 3.5s, 5s, 6.5s
+    await sleep(wait);
+    return apiFetch(path, { method, body, auth, _retried, _wakeAttempt: _wakeAttempt + 1 });
+  }
+
+  const data = await safeJson(res);
+
+  // Auto-refresh on expired token (once)
   if (res.status === 401 && auth && !_retried) {
     const rt = getRefreshToken();
     if (rt) {
@@ -49,17 +88,26 @@ export async function apiFetch(path, { method = 'GET', body, auth = true, _retri
           body: JSON.stringify({ refreshToken: rt })
         });
         if (r.ok) {
-          const data = await r.json();
-          setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-          setUser(data.user);
-          return apiFetch(path, { method, body, auth, _retried: true });
+          const refreshData = await safeJson(r);
+          if (refreshData?.accessToken) {
+            setTokens({
+              accessToken: refreshData.accessToken,
+              refreshToken: refreshData.refreshToken
+            });
+            setUser(refreshData.user);
+            return apiFetch(path, { method, body, auth, _retried: true });
+          }
         }
       } catch {}
     }
   }
 
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new Error(data?.error || res.statusText);
+  if (!res.ok) {
+    const message = data?.error
+      || (res.status === 502 || res.status === 503 || res.status === 504
+        ? 'Server is waking up. Please try again in a moment.'
+        : `Request failed (${res.status})`);
+    throw new Error(message);
+  }
   return data;
 }

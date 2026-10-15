@@ -3,11 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f2f4f7;
+  --bg: #f7f8fa;
   --card: #ffffff;
-  --text: #111827;
-  --muted: #6b7280;
+  --text: #0f172a;
+  --muted: #64748b;
+  --dim: #94a3b8;
   --border: #e5e7eb;
+  --primary: #059669;
 }
 
 .dark {
@@ -15,7 +17,9 @@
   --card: #161b22;
   --text: #e6edf3;
   --muted: #8b949e;
+  --dim: #6e7681;
   --border: #21262d;
+  --primary: #10b981;
 }
 
 html, body {
@@ -25,20 +29,46 @@ html, body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * { box-sizing: border-box; }
 a { color: inherit; text-decoration: none; }
 
+/* Buttons */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold transition;
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all duration-150 active:scale-95;
 }
 .btn-primary {
-  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  @apply btn bg-brand-600 text-white hover:bg-brand-700 shadow-sm;
 }
 .btn-outline {
   @apply btn border border-gray-300 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700;
 }
+.btn-ghost {
+  @apply btn text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800;
+}
+
+/* Inputs */
 .input {
-  @apply w-full px-3 py-2 rounded-xl border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500;
+  @apply w-full px-4 py-3 rounded-xl border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition;
+}
+
+/* Cards */
+.card {
+  @apply bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card;
+}
+.card-hover {
+  @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+}
+
+/* Chip */
+.chip {
+  @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-150 cursor-pointer select-none;
+}
+
+/* Fade-in on mount */
+.animate-in {
+  animation: fadeIn 0.3s ease-out;
 }

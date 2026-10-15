@@ -1,29 +1,37 @@
 'use client';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ItemCard from '@/components/ItemCard';
-import { apiFetch, API_URL } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 const CATEGORIES = [
-  { slug: 'all',         name: 'All' },
-  { slug: 'food',        name: 'Food' },
-  { slug: 'clothing',    name: 'Clothing' },
-  { slug: 'electronics', name: 'Electronics' },
-  { slug: 'books',       name: 'Books' },
-  { slug: 'home',        name: 'Home' },
-  { slug: 'beauty',      name: 'Beauty' },
-  { slug: 'sports',      name: 'Sports' },
-  { slug: 'services',    name: 'Services' },
-  { slug: 'other',       name: 'Other' }
+  { slug: 'all',         name: 'All',         icon: '🛍️' },
+  { slug: 'food',        name: 'Food',        icon: '🍔' },
+  { slug: 'clothing',    name: 'Fashion',     icon: '👕' },
+  { slug: 'electronics', name: 'Electronics', icon: '📱' },
+  { slug: 'books',       name: 'Books',       icon: '📚' },
+  { slug: 'home',        name: 'Home',        icon: '🏠' },
+  { slug: 'beauty',      name: 'Beauty',      icon: '💅' },
+  { slug: 'sports',      name: 'Sports',      icon: '⚽' },
+  { slug: 'services',    name: 'Services',    icon: '✂️' },
+  { slug: 'other',       name: 'Other',       icon: '📦' }
 ];
 
-export default function Home() {
+function HomeInner() {
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get('q') || '';
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [category, setCategory] = useState('all');
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState(urlQuery);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlQuery);
   const timer = useRef(null);
+
+  useEffect(() => {
+    setSearch(urlQuery);
+  }, [urlQuery]);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -50,70 +58,150 @@ export default function Home() {
 
   useEffect(() => { load(); }, [load]);
 
+  const isFiltered = category !== 'all' || Boolean(debouncedSearch);
+  const activeCategory = CATEGORIES.find((c) => c.slug === category);
+
   return (
-    <div>
+    <div className="animate-in">
+      {!isFiltered ? (
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-700 to-emerald-800 dark:from-brand-800 dark:via-brand-900 dark:to-emerald-950 text-white px-6 py-10 md:py-14 mb-8 shadow-card">
+          <div className="relative z-10 max-w-2xl">
+            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider bg-white/15 backdrop-blur px-3 py-1 rounded-full mb-4">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Mulungushi University
+            </span>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+              Buy &amp; sell on campus.
+            </h1>
+            <p className="text-white/85 mt-3 text-base md:text-lg max-w-xl">
+              Fast delivery from sellers around you. Post anything in seconds.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-6 text-xs md:text-sm">
+              <span className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full font-semibold">
+                ⚡ Fast delivery
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full font-semibold">
+                🛡️ Safe payments
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full font-semibold">
+                📍 Campus only
+              </span>
+            </div>
+          </div>
+
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/5 pointer-events-none"></div>
+          <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-white/5 pointer-events-none"></div>
+        </section>
+      ) : null}
+
       <section className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900">What are you looking for?</h1>
-        <p className="text-gray-600 mt-1">Buy and sell on Mulungushi campus.</p>
+        <h2 className="text-lg font-bold mb-4">Browse categories</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-10 gap-2">
+          {CATEGORIES.map((c) => {
+            const active = category === c.slug;
+            return (
+              <button
+                key={c.slug}
+                onClick={() => setCategory(c.slug)}
+                className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl transition ${
+                  active
+                    ? 'bg-brand-600 text-white shadow-card'
+                    : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-card'
+                }`}
+              >
+                <span className="text-2xl">{c.icon}</span>
+                <span className={`text-[11px] font-bold ${active ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                  {c.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
-      <div className="flex flex-col md:flex-row gap-3 mb-5">
-        <div className="flex-1 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">🔍</span>
-          <input
-            type="text"
-            placeholder="Search items, services…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input"
-            style={{ paddingLeft: '2.5rem' }}
-          />
+      <section className="mb-4 flex items-end justify-between">
+        <div>
+          <h2 className="text-lg font-bold">
+            {isFiltered ? 'Results' : 'Recent listings'}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {debouncedSearch
+              ? `for "${debouncedSearch}"`
+              : category === 'all'
+                ? 'Fresh finds around campus'
+                : `${activeCategory?.name ?? ''} listings`}
+          </p>
         </div>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-        {CATEGORIES.map((c) => {
-          const active = category === c.slug;
-          return (
-            <button
-              key={c.slug}
-              onClick={() => setCategory(c.slug)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border transition ${
-                active
-                  ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500'
-              }`}
-            >
-              {c.name}
-            </button>
-          );
-        })}
-      </div>
+        {isFiltered ? (
+          <button
+            onClick={() => { setCategory('all'); setSearch(''); setDebouncedSearch(''); }}
+            className="text-sm font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Clear filters
+          </button>
+        ) : null}
+      </section>
 
       {error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-6">
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-2xl p-4 mb-6">
           <p className="font-semibold">Couldn't reach API</p>
           <p className="text-sm mt-1">{error}</p>
         </div>
       ) : null}
 
       {loading && items.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">Loading…</div>
+        <SkeletonGrid />
       ) : items.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-5xl mb-3">🔍</p>
-          <h2 className="text-xl font-bold text-gray-900">Nothing here yet</h2>
-          <p className="text-gray-500 mt-1">
-            {debouncedSearch ? `No results for "${debouncedSearch}"` : 'Try another category or post the first item'}
-          </p>
-        </div>
+        <EmptyState search={debouncedSearch} />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {items.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800"
+        >
+          <div className="aspect-square bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+          <div className="p-3 space-y-2">
+            <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"></div>
+            <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-2/3 animate-pulse"></div>
+            <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-1/2 animate-pulse mt-3"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ search }) {
+  return (
+    <div className="text-center py-20">
+      <div className="text-6xl mb-4">🔍</div>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        {search ? `No results for "${search}"` : 'Nothing here yet'}
+      </h3>
+      <p className="text-gray-500 dark:text-gray-400 mt-2">
+        {search ? 'Try a different search or browse all categories' : 'Be the first to post an item'}
+      </p>
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
   );
 }
