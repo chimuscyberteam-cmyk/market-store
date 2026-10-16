@@ -10,6 +10,7 @@ export default function LoginPage() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -50,13 +51,23 @@ export default function LoginPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1">Password</label>
-          <input
-            type="password"
-            required
-            className="input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              className="input pr-12"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xl"
+              aria-label="Toggle password"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
 
         <div className="text-right -mt-2">
