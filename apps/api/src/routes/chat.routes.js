@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
+// List conversations for the current user
 router.get('/conversations', requireAuth, async (req, res, next) => {
   try {
     const me = req.user.sub;
@@ -42,6 +43,38 @@ router.get('/conversations', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Unread message count for current user
+router.get('/unread-count', requireAuth, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM messages
+       WHERE receiver_id = $1 AND read_at IS NULL`,
+      [req.user.sub]
+    );
+    res.json({ count: rows[0].count });
+  } catch (err) { next(err); }
+});
+
+// Mark all messages in a thread as read
+router.post('/:itemId/:otherUserId/read', requireAuth, async (req, res, next) => {
+  try {
+    const { itemId, otherUserId } = req.params;
+    const me = req.user.sub;
+    await pool.query(
+      `UPDATE messages
+       SET read_at = now()
+       WHERE item_id = $1
+         AND sender_id = $2
+         AND receiver_id = $3
+         AND read_at IS NULL`,
+      [itemId, otherUserId, me]
+    );
+    res.status(204).end();
+  } catch (err) { next(err); }
+});
+
+// Message history for one thread
 router.get('/:itemId/:otherUserId', requireAuth, async (req, res, next) => {
   try {
     const { itemId, otherUserId } = req.params;
