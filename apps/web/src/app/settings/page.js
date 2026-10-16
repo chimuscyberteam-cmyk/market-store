@@ -9,7 +9,7 @@ import { ROLE_LABELS, ROLE_DESCRIPTIONS, canBecomeSeller } from '@market-store/s
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, updateUser } = useAuth();
   const { dark, toggle } = useTheme();
   const [busy, setBusy] = useState(false);
 
@@ -31,9 +31,9 @@ export default function SettingsPage() {
     if (!confirm('Upgrade to seller? You will be able to post items for sale.')) return;
     setBusy(true);
     try {
-      await apiFetch('/api/users/me/become-seller', { method: 'POST' });
-      alert('You are now a seller!');
-      window.location.reload();
+      const res = await apiFetch('/api/users/me/become-seller', { method: 'POST' });
+      if (res.user) updateUser(res.user);
+      alert('You are now a seller! You can post items.');
     } catch (e) {
       alert(`Couldn't upgrade: ${e.message}`);
     } finally {
