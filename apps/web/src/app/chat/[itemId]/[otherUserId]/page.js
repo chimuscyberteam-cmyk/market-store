@@ -35,6 +35,11 @@ export default function ChatPage() {
         setItem(itemData.item);
         const history = await apiFetch(`/api/chat/${itemId}/${otherUserId}`);
         setMessages(history.messages || []);
+        // Mark this thread as read
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://market-store-api.onrender.com'}/api/chat/${itemId}/${otherUserId}/read`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('ms.accessToken') || ''}` }
+        }).catch(() => {});
       } catch (e) {
         setError(e.message);
       } finally {
@@ -93,7 +98,7 @@ export default function ChatPage() {
     setBody('');
   }
 
-  if (authLoading || loading) {
+  if (authLoading || loading || !user) {
     return <div className="text-center py-20 text-gray-500">Loading…</div>;
   }
   if (error) {
@@ -141,20 +146,21 @@ export default function ChatPage() {
         ) : null}
 
         {messages.map((m) => {
-          const mine = m.sender_id === user.id;
+          const mine = m.sender_id === user?.id;
           return (
-            <div
-              key={m.id}
-              className={`max-w-[75%] px-4 py-2.5 rounded-2xl animate-in ${
-                mine
-                  ? 'ml-auto bg-brand-600 text-white rounded-br-md'
-                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 rounded-bl-md'
-              }`}
-            >
-              <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-              <p className={`text-[10px] mt-1 ${mine ? 'text-green-100' : 'text-gray-400'}`}>
-                {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[75%] px-4 py-2.5 rounded-2xl animate-in ${
+                  mine
+                    ? 'bg-brand-600 text-white rounded-br-md'
+                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 rounded-bl-md'
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                <p className={`text-[10px] mt-1 ${mine ? 'text-green-100 text-right' : 'text-gray-400'}`}>
+                  {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
             </div>
           );
         })}

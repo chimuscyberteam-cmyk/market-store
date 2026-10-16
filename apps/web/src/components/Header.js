@@ -21,6 +21,7 @@ export default function Header() {
   const { dark, toggle } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -43,6 +44,24 @@ export default function Header() {
     signOut();
     router.push('/');
   }
+
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return; }
+    let cancelled = false;
+    async function fetchUnread() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://market-store-api.onrender.com'}/api/chat/unread-count`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('ms.accessToken') || ''}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setUnreadCount(data?.count || 0);
+      } catch {}
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user, pathname]);
 
   return (
     <header className="sticky top-0 z-40 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 backdrop-blur supports-[backdrop-filter]:bg-white/85">
@@ -80,9 +99,14 @@ export default function Header() {
                 <Link
                   href="/messages"
                   aria-label="Messages"
-                  className="hidden sm:flex w-9 h-9 rounded-full items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  className="relative hidden sm:flex w-9 h-9 rounded-full items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
                   💬
+                  {unreadCount > 0 ? (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  ) : null}
                 </Link>
                 {/* Orders */}
                 <Link

@@ -7,7 +7,6 @@ export const metadata = {
   title: 'Market Store — Mulungushi University',
   description: 'Buy and sell on campus. Delivery in minutes.',
   manifest: '/manifest.webmanifest',
-  themeColor: '#059669'
 };
 
 export const viewport = {
