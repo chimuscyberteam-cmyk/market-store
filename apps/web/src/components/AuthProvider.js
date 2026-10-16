@@ -18,13 +18,18 @@ export default function AuthProvider({ children }) {
     saveUser(user);
     setUser(user);
   }
+  function updateUser(newUser) {
+    saveUser(newUser);
+    setUser(newUser);
+  }
+
   function signOut() {
     clearTokens();
     setUser(null);
   }
 
   return (
-    <Ctx.Provider value={{ user, loading, signIn, signOut }}>
+    <Ctx.Provider value={{ user, loading, signIn, signOut, updateUser }}>
       {children}
     </Ctx.Provider>
   );
