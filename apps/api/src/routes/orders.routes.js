@@ -132,7 +132,7 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
     const me = req.user.sub;
 
     const { rows: existing } = await pool.query(
-      `SELECT id, buyer_id, seller_id, status FROM orders WHERE id = $1`,
+      `SELECT id, buyer_id, seller_id, status, item_id FROM orders WHERE id = $1`,
       [req.params.id]
     );
     const order = existing[0];
@@ -156,22 +156,23 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
       : undefined;
 
     const { rows } = await pool.query(
-      `UPDATE orders
-       SET status = $1 ${paymentStatus ? ', payment_status = $4' : ''}
-       WHERE id = $2 RETURNING *`,
       paymentStatus
-        ? [status, req.params.id, me, paymentStatus]
+        ? `UPDATE orders SET status = $1, payment_status = $2 WHERE id = $3 RETURNING *`
+        : `UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`,
+      paymentStatus
+        ? [status, paymentStatus, req.params.id]
         : [status, req.params.id]
     );
-    // Note: when paymentStatus is undefined we only pass [status, id]
-    // The query above was written defensively; the simpler version:
-    if (!rows[0]) {
-      const retry = await pool.query(
-        `UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`,
-        [status, req.params.id]
+    if (!rows[0]) return res.status(404).json({ error: 'Order not found' });
+
+    // Auto-mark the item as sold when its order is delivered
+    if (status === 'delivered') {
+      await pool.query(
+        `UPDATE items SET status = 'sold' WHERE id = $1`,
+        [order.item_id]
       );
-      return res.json({ order: retry.rows[0] });
     }
+
     res.json({ order: rows[0] });
   } catch (err) { next(err); }
 });
