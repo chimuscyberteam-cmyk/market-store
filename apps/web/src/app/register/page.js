@@ -16,6 +16,7 @@ export default function RegisterPage() {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   function update(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -83,14 +84,24 @@ export default function RegisterPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1">Password</label>
-          <input
-            type="password"
-            required
-            minLength={8}
-            className="input"
-            value={form.password}
-            onChange={(e) => update('password', e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              minLength={8}
+              className="input pr-12"
+              value={form.password}
+              onChange={(e) => update('password', e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xl"
+              aria-label="Toggle password"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
           <p className="text-xs text-gray-500 mt-1">At least 8 characters</p>
         </div>
 
