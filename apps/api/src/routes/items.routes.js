@@ -88,4 +88,28 @@ router.patch('/:id/status', requireAuth, requireRole('seller', 'admin'), async (
   } catch (err) { next(err); }
 });
 
+
+// Edit item price and quantity
+router.patch('/:id', requireAuth, async (req, res, next) => {
+  try {
+    const { priceZmw, quantity } = z.object({
+      priceZmw: z.number().positive(),
+      quantity: z.number().int().nonnegative()
+    }).parse(req.body);
+
+    const { rows } = await pool.query(
+      `UPDATE items 
+       SET price_zmw = $1, 
+           quantity = $2, 
+           status = CASE WHEN $2 = 0 THEN 'sold' ELSE 'active' END 
+       WHERE id = $3 AND seller_id = $4 RETURNING *`,
+      [priceZmw, quantity, req.params.id, req.user.sub]
+    );
+    
+    if (!rows[0]) return res.status(404).json({ error: 'Item not found or not yours' });
+    res.json({ item: rows[0] });
+  } catch (err) { next(err); }
+});
+
 export default router;
+

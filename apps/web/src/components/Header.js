@@ -145,6 +145,9 @@ export default function Header() {
                       <MenuLink href="/orders" icon="📦">
                         My orders
                       </MenuLink>
+                      <MenuLink href="/my-listings" icon="🏪">
+                        My listings
+                      </MenuLink>
                       <MenuLink href="/messages" icon="💬">
                         Messages
                       </MenuLink>
@@ -200,6 +203,7 @@ export default function Header() {
             <MobileLink href="/">🏠 Home</MobileLink>
             <MobileLink href="/messages">💬 Messages</MobileLink>
             <MobileLink href="/orders">📦 Orders</MobileLink>
+            <MobileLink href="/my-listings">🏪 My Listings</MobileLink>
             <MobileLink href="/items/new">➕ Post item</MobileLink>
             {!user ? (
               <MobileLink href="/login">🔑 Sign in</MobileLink>

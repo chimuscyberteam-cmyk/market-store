@@ -19,6 +19,8 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editBody, setEditBody] = useState('');
   const [connected, setConnected] = useState(false);
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
@@ -70,6 +72,9 @@ export default function ChatPage() {
         return [...prev, msg];
       });
     });
+    socket.on('chat:edited', (msg) => {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+    });
     socket.on('connect_error', (e) => setError(`Socket: ${e.message}`));
 
     return () => {
@@ -81,6 +86,23 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+
+  function deleteMessage(id) {
+    if (!confirm('Delete this message?')) return;
+    socketRef.current.emit('chat:delete', { messageId: id, itemId, otherUserId }, (res) => {
+      if (res?.error) alert(res.error);
+    });
+  }
+
+  function saveEdit(id) {
+    const text = editBody.trim();
+    if (!text) return;
+    socketRef.current.emit('chat:edit', { messageId: id, body: text, itemId, otherUserId }, (res) => {
+      if (res?.error) alert(res.error);
+      else setEditingId(null);
+    });
+  }
 
   function send(e) {
     e.preventDefault();
@@ -156,10 +178,36 @@ export default function ChatPage() {
                     : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 rounded-bl-md'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-                <p className={`text-[10px] mt-1 ${mine ? 'text-green-100 text-right' : 'text-gray-400'}`}>
-                  {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                {editingId === m.id ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="text-black px-2 py-1 rounded text-sm w-full outline-none"
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="flex gap-2 justify-end text-xs font-semibold">
+                      <button type="button" onClick={() => setEditingId(null)} className="text-white/70 hover:text-white">Cancel</button>
+                      <button type="button" onClick={() => saveEdit(m.id)} className="text-white hover:underline">Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    {m.is_deleted ? <span className="italic opacity-70">🚫 This message was deleted</span> : m.body}
+                  </p>
+                )}
+                <div className={`flex items-center gap-2 mt-1 text-[10px] ${mine ? 'text-green-100 justify-end' : 'text-gray-400'}`}>
+                  {m.edited_at && !m.is_deleted && <span>(edited)</span>}
+                  <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  
+                  {mine && !m.is_deleted && editingId !== m.id && (
+                    <div className="flex gap-2 ml-2">
+                      <button type="button" onClick={() => { setEditingId(m.id); setEditBody(m.body); }} className="hover:underline">Edit</button>
+                      <button type="button" onClick={() => deleteMessage(m.id)} className="hover:underline text-red-300">Delete</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

@@ -17,7 +17,7 @@ export default function ItemCard({ item }) {
   return (
     <Link
       href={`/items/${item.id}`}
-      className="group bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-card card-hover animate-in block"
+      className="card-premium flex flex-col overflow-hidden group"
     >
       <div className="relative aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
         {img ? (

@@ -1,3 +1,5 @@
+import { Inter } from 'next/font/google';
+const inter = Inter({ subsets: ['latin'] });
 import './globals.css';
 import Header from '@/components/Header';
 import AuthProvider from '@/components/AuthProvider';
@@ -19,7 +21,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body className={inter.className + " bg-[#f8fafc] text-slate-900 min-h-screen antialiased"}>
         <ThemeProvider>
           <AuthProvider>
             <Header />

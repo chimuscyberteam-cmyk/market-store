@@ -44,6 +44,34 @@ export function attachSocket(httpServer) {
       } catch (err) { if (ack) ack({ error: err.message }); }
     });
 
+    
+    
+    socket.on('chat:edit', async ({ messageId, body, itemId, otherUserId }, ack) => {
+      try {
+        const text = (body || '').trim();
+        if (!text) return ack && ack({ error: 'Empty message' });
+        const { rows } = await pool.query(
+          `UPDATE messages SET body = $1, edited_at = now() WHERE id = $2 AND sender_id = $3 RETURNING *`,
+          [text, messageId, me]
+        );
+        if (!rows[0]) return ack && ack({ error: 'Message not found or unauthorized' });
+        io.to(roomName(itemId, me, otherUserId)).emit('chat:edited', rows[0]);
+        if (ack) ack({ ok: true });
+      } catch (err) { if (ack) ack({ error: err.message }); }
+    });
+
+    socket.on('chat:delete', async ({ messageId, itemId, otherUserId }, ack) => {
+      try {
+        const { rows } = await pool.query(
+          `UPDATE messages SET is_deleted = true, body = 'This message was deleted' WHERE id = $1 AND sender_id = $2 RETURNING *`,
+          [messageId, me]
+        );
+        if (!rows[0]) return ack && ack({ error: 'Message not found or unauthorized' });
+        io.to(roomName(itemId, me, otherUserId)).emit('chat:edited', rows[0]);
+        if (ack) ack({ ok: true });
+      } catch (err) { if (ack) ack({ error: err.message }); }
+    });
+
     socket.on('chat:typing', ({ itemId, otherUserId }) => {
       if (!itemId || !otherUserId) return;
       socket.to(roomName(itemId, me, otherUserId)).emit('chat:typing', { userId: me });
