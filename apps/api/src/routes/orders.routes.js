@@ -9,7 +9,8 @@ const router = Router();
 const quoteSchema = z.object({
   itemId: z.string().uuid(),
   deliveryLat: z.number().min(-90).max(90),
-  deliveryLng: z.number().min(-180).max(180)
+  deliveryLng: z.number().min(-180).max(180),
+  quantity: z.number().int().positive().default(1)
 });
 
 router.post('/quote', async (req, res, next) => {
@@ -33,7 +34,7 @@ router.post('/quote', async (req, res, next) => {
       distanceMeters: distance,
       deliveryFeeZmw: fee,
       itemPriceZmw: itemPrice,
-      totalZmw: itemPrice + fee
+      totalZmw: (itemPrice * d.quantity) + fee
     });
   } catch (err) { next(err); }
 });
@@ -47,42 +48,36 @@ router.post('/', requireAuth, async (req, res, next) => {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      `SELECT id, seller_id, price_zmw, latitude, longitude
+      `SELECT id, seller_id, price_zmw, latitude, longitude, quantity
        FROM items WHERE id = $1 AND status = 'active' FOR UPDATE`,
       [d.itemId]
     );
     const item = rows[0];
-    if (!item) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Item not available' }); }
-    if (item.seller_id === req.user.sub) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Cannot buy your own item' });
-    }
+    
+    if (item.quantity < d.quantity) { await client.query('ROLLBACK'); return res.status(400).json({ error: `Only ${item.quantity} left in stock` }); }
+    if (item.seller_id === req.user.sub) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot buy your own item' }); }
 
-    const distance = Math.round(distanceMeters(
-      { lat: item.latitude, lng: item.longitude },
-      { lat: d.deliveryLat, lng: d.deliveryLng }
-    ));
+    const distance = Math.round(distanceMeters({ lat: item.latitude, lng: item.longitude }, { lat: d.deliveryLat, lng: d.deliveryLng }));
     const fee = deliveryFee(distance);
-    const itemPrice = Number(item.price_zmw);
+    const itemPrice = Number(item.price_zmw) * d.quantity;
     const total = itemPrice + fee;
+    const deliveryCode = String(Math.floor(100000 + Math.random() * 900000));
+    const holdExpiresAt = new Date(Date.now() + 60 * 60 * 1000); 
 
     const { rows: orderRows } = await client.query(
-      `INSERT INTO orders
-         (item_id, buyer_id, seller_id, distance_meters, delivery_fee_zmw,
-          item_price_zmw, total_zmw, payment_method, delivery_lat, delivery_lng)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [d.itemId, req.user.sub, item.seller_id, distance, fee,
-       itemPrice, total, d.paymentMethod, d.deliveryLat, d.deliveryLng]
+      `INSERT INTO orders (item_id, buyer_id, seller_id, distance_meters, delivery_fee_zmw, item_price_zmw, total_zmw, payment_method, delivery_lat, delivery_lng, delivery_code, hold_expires_at, quantity, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, 'pending') RETURNING *`,
+      [d.itemId, req.user.sub, item.seller_id, distance, fee, itemPrice, total, d.paymentMethod, d.deliveryLat, d.deliveryLng, deliveryCode, holdExpiresAt, d.quantity]
+    );
+
+    await client.query(
+      `UPDATE items SET quantity = quantity - $1, status = CASE WHEN quantity - $1 = 0 THEN 'sold' ELSE status END WHERE id = $2`,
+      [d.quantity, d.itemId]
     );
 
     await client.query('COMMIT');
     res.status(201).json({ order: orderRows[0] });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    next(err);
-  } finally {
-    client.release();
-  }
+  } catch (err) { await client.query('ROLLBACK'); next(err); } finally { client.release(); }
 });
 
 // Buyer's orders
@@ -123,12 +118,13 @@ router.get('/selling', requireAuth, async (req, res, next) => {
 
 // Update order status — only seller or buyer of that order
 const statusSchema = z.object({
-  status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled'])
+  status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']),
+  code: z.string().optional()
 });
 
 router.patch('/:id/status', requireAuth, async (req, res, next) => {
   try {
-    const { status } = statusSchema.parse(req.body);
+    const { status, code } = statusSchema.parse(req.body);
     const me = req.user.sub;
 
     const { rows: existing } = await pool.query(

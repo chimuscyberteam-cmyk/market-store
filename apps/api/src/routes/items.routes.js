@@ -12,17 +12,18 @@ const createSchema = z.object({
   priceZmw: z.number().positive(),
   imageUrls: z.array(z.string().url()).max(6).optional().default([]),
   latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180)
+  longitude: z.number().min(-180).max(180),
+  quantity: z.number().int().positive().default(1)
 });
 
 router.post('/', requireAuth, requireRole('seller', 'admin'), async (req, res, next) => {
   try {
     const d = createSchema.parse(req.body);
     const { rows } = await pool.query(
-      `INSERT INTO items (seller_id, category_id, title, description, price_zmw, image_urls, latitude, longitude)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      `INSERT INTO items (seller_id, category_id, title, description, price_zmw, image_urls, latitude, longitude, quantity)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [req.user.sub, d.categoryId, d.title, d.description, d.priceZmw,
-       JSON.stringify(d.imageUrls), d.latitude, d.longitude]
+       JSON.stringify(d.imageUrls), d.latitude, d.longitude, d.quantity]
     );
     res.status(201).json({ item: rows[0] });
   } catch (err) { next(err); }

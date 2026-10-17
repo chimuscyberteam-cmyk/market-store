@@ -44,6 +44,7 @@ export default function PostItem() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [coords, setCoords] = useState(null);
@@ -109,6 +110,7 @@ export default function PostItem() {
           title: title.trim(),
           description: description.trim(),
           priceZmw: priceNum,
+          quantity: parseInt(quantity, 10),
           imageUrls,
           latitude: coords.lat,
           longitude: coords.lng
@@ -180,6 +182,17 @@ export default function PostItem() {
             placeholder="e.g. 25"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">Quantity available *</label>
+          <input
+            className="input"
+            type="number"
+            min="1"
+            step="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
           />
         </div>
 

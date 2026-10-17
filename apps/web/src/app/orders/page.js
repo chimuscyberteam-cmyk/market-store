@@ -52,12 +52,12 @@ export default function OrdersPage() {
     if (user) load();
   }, [user, load]);
 
-  async function updateStatus(orderId, status) {
+  async function updateStatus(orderId, status, code = null) {
     setBusyId(orderId);
     try {
       await apiFetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
-        body: { status }
+        body: { status, code: code || undefined }
       });
       await load();
     } catch (e) {
@@ -138,6 +138,15 @@ export default function OrdersPage() {
 
                 <h3 className="font-bold text-lg">{o.item_title}</h3>
 
+                  {tab === 'mine' && o.status !== 'delivered' && o.status !== 'cancelled' && o.delivery_code ? (
+                    <div className='mt-3 p-3 bg-brand-50 border border-brand-200 rounded-lg text-center'>
+                      <p className='text-xs text-brand-700 font-semibold uppercase tracking-wider'>Your Delivery Code</p>
+                      <p className='text-3xl font-extrabold text-brand-800 tracking-widest'>{o.delivery_code}</p>
+                      <p className='text-xs text-brand-600 mt-1'>Give this to the seller when they arrive.</p>
+                    </div>
+                  ) : null}
+
+
                 <div className="mt-3 text-sm text-gray-700 space-y-1">
                   <p>
                     <span className="text-gray-500">
@@ -178,7 +187,7 @@ export default function OrdersPage() {
                     {tab === 'selling' && o.status === 'confirmed' ? (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() => updateStatus(o.id, 'delivered')}
+                        onClick={() => { const code = prompt('Enter the 6-digit delivery code from the buyer:'); if (code) updateStatus(o.id, 'delivered', code); }}
                         className="btn-primary disabled:opacity-60"
                       >
                         Mark delivered

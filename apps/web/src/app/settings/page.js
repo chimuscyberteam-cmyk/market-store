@@ -18,7 +18,17 @@ export default function SettingsPage() {
   }
 
   if (!user) {
-    return (
+    
+  const becomeSeller = async () => {
+    try {
+      await apiFetch('/api/users/become-seller', { method: 'POST' });
+      alert('Success! Please log out and log back in to start selling.');
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  return (
       <div className="max-w-2xl mx-auto text-center py-20">
         <div className="text-6xl mb-4">🔑</div>
         <h1 className="text-2xl font-extrabold">Sign in to view settings</h1>

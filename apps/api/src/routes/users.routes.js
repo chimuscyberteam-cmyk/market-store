@@ -84,4 +84,19 @@ router.post('/me/change-password', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+// Become a seller
+router.post('/become-seller', requireAuth, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET role = 'seller' WHERE id = $1 RETURNING id, email, full_name, role`,
+      [req.user.sub]
+    );
+    
+    // Note: The user must log out and log back in to get a new token with the new role.
+    res.json({ user: rows[0], message: 'You are now a seller. Please log out and log back in to apply changes.' });
+  } catch (err) { next(err); }
+});
+
 export default router;
+

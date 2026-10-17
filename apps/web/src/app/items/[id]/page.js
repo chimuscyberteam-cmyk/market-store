@@ -20,6 +20,7 @@ export default function ItemDetail() {
   const [error, setError] = useState(null);
   const [quote, setQuote] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -55,8 +56,7 @@ export default function ItemDetail() {
         body: {
           itemId: id,
           deliveryLat: loc.lat,
-          deliveryLng: loc.lng
-        }
+          deliveryLng: loc.lng, quantity }
       });
       setQuote(data);
     } catch (e) {
@@ -77,7 +77,7 @@ export default function ItemDetail() {
       const q = await apiFetch('/api/orders/quote', {
         method: 'POST',
         auth: false,
-        body: { itemId: id, deliveryLat: loc.lat, deliveryLng: loc.lng }
+        body: { itemId: id, deliveryLat: loc.lat, deliveryLng: loc.lng, quantity }
       });
       if (!confirm(
         `Confirm order\n\nItem: K${q.itemPriceZmw}\nDelivery: K${q.deliveryFeeZmw}\n\nTotal: K${q.totalZmw}`
@@ -87,8 +87,7 @@ export default function ItemDetail() {
         body: {
           itemId: id,
           deliveryLat: loc.lat,
-          deliveryLng: loc.lng,
-          paymentMethod: 'pod'
+          deliveryLng: loc.lng, quantity, paymentMethod: 'pod'
         }
       });
       alert('Order placed! Check Orders tab for status.');
@@ -134,9 +133,21 @@ export default function ItemDetail() {
         <div>
           <p className="text-sm text-gray-500">{item.category_name}</p>
           <h1 className="text-2xl font-extrabold mt-1">{item.title}</h1>
+          
           <p className="text-3xl font-extrabold text-brand-600 mt-3">
-            K{Number(item.price_zmw).toFixed(2)}
+            K{(Number(item.price_zmw) * quantity).toFixed(2)}
           </p>
+          <p className="text-sm text-gray-500 mt-1">{item.quantity} available</p>
+
+          <div className="flex items-center gap-4 mt-6">
+            <span className="text-sm font-bold text-gray-700">Quantity:</span>
+            <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 text-lg">-</button>
+              <span className="px-4 py-1 font-semibold">{quantity}</span>
+              <button onClick={() => setQuantity(q => Math.min(item.quantity, q + 1))} className="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 text-lg">+</button>
+            </div>
+          </div>
+
 
           <div className="mt-6">
             <h3 className="text-sm font-bold text-gray-700">Description</h3>
