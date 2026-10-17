@@ -27,16 +27,17 @@ export function attachSocket(httpServer) {
       socket.join(roomName(itemId, me, otherUserId));
     });
 
-    socket.on('chat:send', async ({ itemId, receiverId, body }, ack) => {
+    
+    socket.on('chat:send', async ({ itemId, receiverId, body, imageUrl }, ack) => {
       try {
         const text = (body || '').trim();
-        if (!text) return ack && ack({ error: 'Empty message' });
+        if (!text && !imageUrl) return ack && ack({ error: 'Message cannot be empty' });
         if (text.length > 2000) return ack && ack({ error: 'Message too long' });
 
         const { rows } = await pool.query(
-          `INSERT INTO messages (item_id, sender_id, receiver_id, body)
-           VALUES ($1,$2,$3,$4) RETURNING *`,
-          [itemId, me, receiverId, text]
+          `INSERT INTO messages (item_id, sender_id, receiver_id, body, image_url)
+           VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+          [itemId, me, receiverId, text, imageUrl || null]
         );
         const msg = rows[0];
         io.to(roomName(itemId, me, receiverId)).emit('chat:message', msg);
@@ -44,38 +45,6 @@ export function attachSocket(httpServer) {
       } catch (err) { if (ack) ack({ error: err.message }); }
     });
 
-    
-    
-    socket.on('chat:edit', async ({ messageId, body, itemId, otherUserId }, ack) => {
-      try {
-        const text = (body || '').trim();
-        if (!text) return ack && ack({ error: 'Empty message' });
-        const { rows } = await pool.query(
-          `UPDATE messages SET body = $1, edited_at = now() WHERE id = $2 AND sender_id = $3 RETURNING *`,
-          [text, messageId, me]
-        );
-        if (!rows[0]) return ack && ack({ error: 'Message not found or unauthorized' });
-        io.to(roomName(itemId, me, otherUserId)).emit('chat:edited', rows[0]);
-        if (ack) ack({ ok: true });
-      } catch (err) { if (ack) ack({ error: err.message }); }
-    });
-
-    socket.on('chat:delete', async ({ messageId, itemId, otherUserId }, ack) => {
-      try {
-        const { rows } = await pool.query(
-          `UPDATE messages SET is_deleted = true, body = 'This message was deleted' WHERE id = $1 AND sender_id = $2 RETURNING *`,
-          [messageId, me]
-        );
-        if (!rows[0]) return ack && ack({ error: 'Message not found or unauthorized' });
-        io.to(roomName(itemId, me, otherUserId)).emit('chat:edited', rows[0]);
-        if (ack) ack({ ok: true });
-      } catch (err) { if (ack) ack({ error: err.message }); }
-    });
-
-    socket.on('chat:typing', ({ itemId, otherUserId }) => {
-      if (!itemId || !otherUserId) return;
-      socket.to(roomName(itemId, me, otherUserId)).emit('chat:typing', { userId: me });
-    });
   });
 
   return io;

@@ -4,12 +4,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { Modal } from '@/components/Modal';
+import { toast } from 'sonner';
 
 export default function MyListings() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editItemData, setEditItemData] = useState(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editQty, setEditQty] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
+  const [isPro, setIsPro] = useState(user?.subscription_tier === 'pro');
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -20,7 +27,7 @@ export default function MyListings() {
       const res = await apiFetch('/api/items/mine/list');
       setItems(res.items || []);
     } catch (e) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setLoading(false);
     }
@@ -29,27 +36,50 @@ export default function MyListings() {
   useEffect(() => { if (user) load(); }, [user]);
 
   const updateStatus = async (id, status) => {
-    if (!confirm(`Are you sure you want to mark this as ${status}?`)) return;
+    if (status === 'removed') { setDeleteId(id); return; }
+    
     try {
       await apiFetch(`/api/items/${id}/status`, { method: 'PATCH', body: { status } });
       load();
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error(e.message); }
   };
 
-  const editItem = async (id, currentPrice, currentQty) => {
-    const price = prompt('Enter new price (ZMW):', currentPrice);
-    if (!price) return;
-    const qty = prompt('Enter new stock quantity:', currentQty);
-    if (!qty) return;
-    
+  
+  
+  const handleBoost = async (id) => {
     try {
-      await apiFetch(`/api/items/${id}`, { 
-        method: 'PATCH', 
-        body: { priceZmw: parseFloat(price), quantity: parseInt(qty) } 
-      });
+      await apiFetch('/api/items/' + id + '/boost', { method: 'POST' });
+      toast.success('Item boosted to the top of the homepage! ⭐');
       load();
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error(e.message); }
   };
+
+  const handleGoPro = async () => {
+    try {
+      await apiFetch('/api/users/subscribe-pro', { method: 'POST' });
+      toast.success('You are now a PRO seller! 👑');
+      setIsPro(true);
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const openEdit = (item) => {
+    setEditItemData(item);
+    setEditPrice(item.price_zmw);
+    setEditQty(item.quantity);
+  };
+
+  const saveEdit = async () => {
+    try {
+      await apiFetch(`/api/items/${editItemData.id}`, { 
+        method: 'PATCH', 
+        body: { priceZmw: parseFloat(editPrice), quantity: parseInt(editQty) } 
+      });
+      toast.success('Item updated successfully!');
+      setEditItemData(null);
+      load();
+    } catch (e) { toast.error(e.message); }
+  };
+;
 
   if (authLoading || loading) return <div className="text-center py-20 text-gray-500">Loading…</div>;
 
@@ -60,7 +90,10 @@ export default function MyListings() {
           <h1 className="text-2xl font-extrabold">My Listings</h1>
           <p className="text-gray-500">Manage your posted items.</p>
         </div>
-        <Link href="/items/new" className="btn-primary">+ Post New Item</Link>
+        <div className="flex gap-2">
+          {!isPro && <button onClick={handleGoPro} className="bg-gradient-to-r from-amber-400 to-amber-500 text-white font-bold px-4 py-2 rounded-xl shadow-md">👑 Go Pro</button>}
+          <Link href="/items/new" className="btn-primary">+ Post New Item</Link>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -89,9 +122,12 @@ export default function MyListings() {
                 <p className="text-xs text-gray-500">Stock: {item.quantity}</p>
                 
                 <div className="flex gap-3 mt-3 text-sm font-semibold">
-                  <button onClick={() => editItem(item.id, item.price_zmw, item.quantity)} className="text-blue-600 hover:underline">Edit</button>
+                  <button onClick={() => openEdit(item)} className="text-blue-600 hover:underline">Edit</button>
                   {item.status === 'active' && (
-                    <button onClick={() => updateStatus(item.id, 'removed')} className="text-red-600 hover:underline">Remove</button>
+                    <>
+                      <button onClick={() => handleBoost(item.id)} className="text-amber-500 hover:underline">Boost</button>
+                      <button onClick={() => updateStatus(item.id, 'removed')} className="text-red-600 hover:underline">Remove</button>
+                    </>
                   )}
                   {item.status === 'removed' && (
                     <button onClick={() => updateStatus(item.id, 'active')} className="text-green-600 hover:underline">Relist</button>
@@ -102,6 +138,30 @@ export default function MyListings() {
           ))}
         </div>
       )}
-    </div>
+    
+      {/* Edit Modal */}
+      <Modal isOpen={!!editItemData} onClose={() => setEditItemData(null)} title="Edit Listing">
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Price (ZMW)</label>
+            <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="w-full mt-1 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:border-brand-500" />
+          </div>
+          <div>
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Stock Quantity</label>
+            <input type="number" value={editQty} onChange={e => setEditQty(e.target.value)} className="w-full mt-1 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:border-brand-500" />
+          </div>
+          <button onClick={saveEdit} className="w-full py-3 mt-2 rounded-xl font-bold text-white bg-brand-600 hover:bg-brand-700">Save Changes</button>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={!!deleteId} onClose={() => setDeleteId(null)} title="Remove Item?">
+        <p className="text-slate-500 mb-6">This will hide the item from the marketplace. You can relist it later.</p>
+        <div className="flex gap-3">
+          <button onClick={() => setDeleteId(null)} className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">Cancel</button>
+          <button onClick={() => { updateStatus(deleteId, 'removed'); setDeleteId(null); }} className="flex-1 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700">Remove</button>
+        </div>
+      </Modal>
+</div>
   );
 }

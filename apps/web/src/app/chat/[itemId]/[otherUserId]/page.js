@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { io } from 'socket.io-client';
 import { apiFetch, getToken, API_URL } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { Modal } from '@/components/Modal';
+import { toast } from 'sonner';
 
 export default function ChatPage() {
   const params = useParams();
@@ -19,11 +21,16 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editBody, setEditBody] = useState('');
-  const [connected, setConnected] = useState(false);
+  const [deleteMsgId, setDeleteMsgId] = useState(null);
+  const [selectedMsgId, setSelectedMsgId] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -37,7 +44,6 @@ export default function ChatPage() {
         setItem(itemData.item);
         const history = await apiFetch(`/api/chat/${itemId}/${otherUserId}`);
         setMessages(history.messages || []);
-        // Mark this thread as read
         fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://market-store-api.onrender.com'}/api/chat/${itemId}/${otherUserId}/read`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${localStorage.getItem('ms.accessToken') || ''}` }
@@ -55,10 +61,7 @@ export default function ChatPage() {
     const token = getToken();
     if (!token) return;
 
-    const socket = io(API_URL, {
-      auth: { token },
-      transports: ['websocket', 'polling']
-    });
+    const socket = io(API_URL, { auth: { token }, transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -87,21 +90,31 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-
-  function deleteMessage(id) {
-    if (!confirm('Delete this message?')) return;
-    socketRef.current.emit('chat:delete', { messageId: id, itemId, otherUserId }, (res) => {
-      if (res?.error) alert(res.error);
-    });
-  }
-
-  function saveEdit(id) {
-    const text = editBody.trim();
-    if (!text) return;
-    socketRef.current.emit('chat:edit', { messageId: id, body: text, itemId, otherUserId }, (res) => {
-      if (res?.error) alert(res.error);
-      else setEditingId(null);
-    });
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || 'market-store-unsigned');
+      
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD || 'rxept7vj'}/image/upload`, {
+        method: 'POST',
+        body: form
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      
+      socketRef.current.emit('chat:send', { itemId, receiverId: otherUserId, body: '', imageUrl: data.secure_url }, (res) => {
+        if (res?.error) toast.error(res.error);
+      });
+    } catch (err) {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   }
 
   function send(e) {
@@ -109,15 +122,32 @@ export default function ChatPage() {
     const text = body.trim();
     if (!text || !socketRef.current) return;
     setSending(true);
-    socketRef.current.emit(
-      'chat:send',
-      { itemId, receiverId: otherUserId, body: text },
-      (res) => {
-        setSending(false);
-        if (res?.error) alert(res.error);
-      }
-    );
+    socketRef.current.emit('chat:send', { itemId, receiverId: otherUserId, body: text }, (res) => {
+      setSending(false);
+      if (res?.error) toast.error(res.error);
+    });
     setBody('');
+  }
+
+  function saveEdit(id) {
+    const text = editBody.trim();
+    if (!text) return;
+    
+    // Instantly disappear from the UI
+    setEditingId(null);
+    
+    // Send to backend in the background
+    socketRef.current.emit('chat:edit', { messageId: id, body: text, itemId, otherUserId }, (res) => {
+      if (res?.error) toast.error(res.error);
+    });
+  }
+  }
+
+  function confirmDelete(id) {
+    socketRef.current.emit('chat:delete', { messageId: id, itemId, otherUserId }, (res) => {
+      if (res?.error) toast.error(res.error);
+      setDeleteMsgId(null);
+    });
   }
 
   if (authLoading || loading || !user) {
@@ -127,9 +157,7 @@ export default function ChatPage() {
     return (
       <div className="max-w-2xl mx-auto text-center py-20">
         <p className="text-red-600 font-semibold">{error}</p>
-        <Link href="/messages" className="text-brand-600 font-semibold mt-4 inline-block">
-          ← Back to messages
-        </Link>
+        <Link href="/messages" className="text-brand-600 font-semibold mt-4 inline-block">← Back to messages</Link>
       </div>
     );
   }
@@ -137,44 +165,31 @@ export default function ChatPage() {
   return (
     <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-140px)] md:h-[calc(100vh-200px)] min-h-[500px] mb-4">
       <div className="bg-white dark:bg-gray-900 rounded-t-2xl border border-gray-100 dark:border-gray-800 border-b-0 p-4 flex items-center gap-3">
-        <Link href="/messages" className="text-gray-500 hover:text-brand-600 text-lg shrink-0">
-          ←
-        </Link>
+        <Link href="/messages" className="text-gray-500 hover:text-brand-600 text-lg shrink-0">←</Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="font-bold truncate">{item?.title ?? 'Chat'}</h1>
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${connected ? 'bg-emerald-500' : 'bg-gray-300'}`}
-              title={connected ? 'Connected' : 'Connecting…'}
-            />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${connected ? 'bg-emerald-500' : 'bg-gray-300'}`} title={connected ? 'Connected' : 'Connecting…'} />
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-            with {item?.seller_name ?? 'user'}
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">with {item?.seller_name ?? 'user'}</p>
         </div>
-        <Link
-          href={`/items/${itemId}`}
-          className="text-sm text-brand-600 font-semibold shrink-0"
-        >
-          View item
-        </Link>
+        <Link href={`/items/${itemId}`} className="text-sm text-brand-600 font-semibold shrink-0">View item</Link>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 p-4 space-y-3">
         {messages.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-sm">
-            No messages yet. Say hi 👋
-          </div>
+          <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-sm">No messages yet. Say hi 👋</div>
         ) : null}
 
         {messages.map((m) => {
           const mine = m.sender_id === user?.id;
           return (
-            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+            <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
               <div
+                onClick={() => { if (mine && !m.is_deleted) setSelectedMsgId(m.id === selectedMsgId ? null : m.id); }}
                 className={`max-w-[75%] px-4 py-2.5 rounded-2xl animate-in ${
                   mine
-                    ? 'bg-brand-600 text-white rounded-br-md'
+                    ? 'bg-brand-600 text-white rounded-br-md cursor-pointer active:scale-[0.98] transition-transform'
                     : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 rounded-bl-md'
                 }`}
               >
@@ -193,32 +208,43 @@ export default function ChatPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm whitespace-pre-wrap break-words">
-                    {m.is_deleted ? <span className="italic opacity-70">🚫 This message was deleted</span> : m.body}
-                  </p>
+                  <>
+                    {m.is_deleted ? (
+                      <span className="italic opacity-70 text-sm">🚫 This message was deleted</span>
+                    ) : (
+                      <>
+                        {m.image_url && (
+                          <img src={m.image_url} alt="attachment" className="rounded-lg mb-2 max-w-full h-auto max-h-60 object-cover cursor-pointer" onClick={() => window.open(m.image_url, '_blank')} />
+                        )}
+                        {m.body && <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>}
+                      </>
+                    )}
+                  </>
                 )}
                 <div className={`flex items-center gap-2 mt-1 text-[10px] ${mine ? 'text-green-100 justify-end' : 'text-gray-400'}`}>
                   {m.edited_at && !m.is_deleted && <span>(edited)</span>}
                   <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  
-                  {mine && !m.is_deleted && editingId !== m.id && (
-                    <div className="flex gap-2 ml-2">
-                      <button type="button" onClick={() => { setEditingId(m.id); setEditBody(m.body); }} className="hover:underline">Edit</button>
-                      <button type="button" onClick={() => deleteMessage(m.id)} className="hover:underline text-red-300">Delete</button>
-                    </div>
-                  )}
                 </div>
               </div>
+              
+              {selectedMsgId === m.id && !m.image_url && (
+                <div className="flex gap-3 mt-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 text-xs font-bold animate-in fade-in zoom-in-95">
+                  <button onClick={() => { setEditingId(m.id); setEditBody(m.body); setSelectedMsgId(null); }} className="text-blue-600 hover:text-blue-700">Edit</button>
+                  <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+                  <button onClick={() => { setDeleteMsgId(m.id); setSelectedMsgId(null); }} className="text-red-600 hover:text-red-700">Delete</button>
+                </div>
+              )}
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
-      <form
-        onSubmit={send}
-        className="bg-white dark:bg-gray-900 rounded-b-2xl border border-gray-100 dark:border-gray-800 border-t-0 p-3 flex gap-2 pb-6 md:pb-3 shadow-sm"
-      >
+      <form onSubmit={send} className="bg-white dark:bg-gray-900 rounded-b-2xl border border-gray-100 dark:border-gray-800 border-t-0 p-3 flex gap-2 items-center pb-6 md:pb-3 shadow-sm">
+        <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0">
+          {uploading ? '⏳' : '📎'}
+        </button>
         <input
           type="text"
           className="input flex-1"
@@ -228,14 +254,18 @@ export default function ChatPage() {
           disabled={sending || !connected}
           autoFocus
         />
-        <button
-          type="submit"
-          className="btn-primary px-6"
-          disabled={sending || !body.trim() || !connected}
-        >
+        <button type="submit" className="btn-primary px-6" disabled={sending || !body.trim() || !connected}>
           Send
         </button>
       </form>
+
+      <Modal isOpen={!!deleteMsgId} onClose={() => setDeleteMsgId(null)} title="Delete Message?">
+        <p className="text-slate-500 mb-6">This message will be replaced with "This message was deleted".</p>
+        <div className="flex gap-3">
+          <button onClick={() => setDeleteMsgId(null)} className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300">Cancel</button>
+          <button onClick={() => confirmDelete(deleteMsgId)} className="flex-1 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700">Delete</button>
+        </div>
+      </Modal>
     </div>
   );
 }

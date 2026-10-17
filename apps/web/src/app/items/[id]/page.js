@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { Modal } from '@/components/Modal';
+import { toast } from 'sonner';
 
 function metersLabel(m) {
   if (!m) return '';
@@ -20,6 +22,8 @@ export default function ItemDetail() {
   const [error, setError] = useState(null);
   const [quote, setQuote] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [checkoutData, setCheckoutData] = useState(null);
+  const [coordsCache, setCoordsCache] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -60,17 +64,14 @@ export default function ItemDetail() {
       });
       setQuote(data);
     } catch (e) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function buyNow() {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+  async function initiateBuy() {
+    if (!user) { router.push('/login'); return; }
     setBusy(true);
     try {
       const loc = await getLocation();
@@ -79,24 +80,26 @@ export default function ItemDetail() {
         auth: false,
         body: { itemId: id, deliveryLat: loc.lat, deliveryLng: loc.lng, quantity }
       });
-      if (!confirm(
-        `Confirm order\n\nItem: K${q.itemPriceZmw}\nDelivery: K${q.deliveryFeeZmw}\n\nTotal: K${q.totalZmw}`
-      )) return;
+      setCoordsCache(loc);
+      setCheckoutData(q);
+    } catch (e) {
+      toast.error(e.message);
+    } finally { setBusy(false); }
+  }
+
+  async function confirmBuy() {
+    setBusy(true);
+    try {
       await apiFetch('/api/orders', {
         method: 'POST',
-        body: {
-          itemId: id,
-          deliveryLat: loc.lat,
-          deliveryLng: loc.lng, quantity, paymentMethod: 'pod'
-        }
+        body: { itemId: id, deliveryLat: coordsCache.lat, deliveryLng: coordsCache.lng, quantity, paymentMethod: 'pod' }
       });
-      alert('Order placed! Check Orders tab for status.');
+      toast.success('Order placed! Check Orders tab.');
+      setCheckoutData(null);
       router.push('/orders');
     } catch (e) {
-      alert(e.message);
-    } finally {
-      setBusy(false);
-    }
+      toast.error(e.message);
+    } finally { setBusy(false); }
   }
 
   if (loading) {
@@ -107,7 +110,26 @@ export default function ItemDetail() {
       <div className="text-center py-20">
         <p className="text-red-600 font-semibold">{error || 'Item not found'}</p>
         <Link href="/" className="text-brand-600 font-semibold mt-3 inline-block">← Back to Browse</Link>
-      </div>
+      
+      <Modal isOpen={!!checkoutData} onClose={() => setCheckoutData(null)} title="Confirm Purchase">
+        {checkoutData && (
+          <div className="space-y-4">
+            <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <div className="flex justify-between"><span>Item Price (x{quantity})</span><span className="font-semibold text-slate-900 dark:text-white">K{checkoutData.itemPriceZmw}</span></div>
+              <div className="flex justify-between"><span>Delivery Fee ({metersLabel(checkoutData.distanceMeters)})</span><span className="font-semibold text-slate-900 dark:text-white">K{checkoutData.deliveryFeeZmw}</span></div>
+              <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-2 mt-2">
+                <span className="font-bold text-slate-900 dark:text-white">Total to pay on delivery</span>
+                <span className="font-extrabold text-brand-600 text-lg">K{checkoutData.totalZmw}</span>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setCheckoutData(null)} className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300">Cancel</button>
+              <button onClick={confirmBuy} disabled={busy} className="flex-1 py-3 rounded-xl font-bold text-white bg-brand-600 hover:bg-brand-700">{busy ? 'Placing...' : 'Place Order'}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+</div>
     );
   }
 
@@ -165,7 +187,7 @@ export default function ItemDetail() {
           </div>
 
           <div className="mt-8 flex flex-col gap-3">
-            <button onClick={buyNow} disabled={busy} className="btn-primary disabled:opacity-60">
+            <button onClick={initiateBuy} disabled={busy} className="btn-primary disabled:opacity-60">
               {busy ? 'Working…' : 'Buy now'}
             </button>
 

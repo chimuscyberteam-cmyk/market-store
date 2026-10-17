@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { toast } from 'sonner';
 
 const STATUS_COLORS = {
   pending:   'bg-yellow-100 text-yellow-800',
@@ -27,6 +28,11 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [modalOrderId, setModalOrderId] = useState(null);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [cashReceived, setCashReceived] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -54,14 +60,21 @@ export default function OrdersPage() {
 
   async function updateStatus(orderId, status, code = null) {
     setBusyId(orderId);
+    setCodeError('');
     try {
       await apiFetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
         body: { status, code: code || undefined }
       });
+      setDeliveryModalOpen(false);
+      setCodeInput('');
       await load();
     } catch (e) {
-      alert(e.message);
+      if (status === 'delivered') {
+        setCodeError(e.message); // Show error inside the modal
+      } else {
+        toast.error(e.message);
+      }
     } finally {
       setBusyId(null);
     }
@@ -125,6 +138,116 @@ export default function OrdersPage() {
           {data.map((o) => {
             const color = STATUS_COLORS[o.status] || STATUS_COLORS.pending;
             const counterparty = tab === 'mine' ? o.seller_name : o.buyer_name;
+
+            if (o.status === 'delivered') {
+              return (
+                <div key={o.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-6 right-6 border-4 border-green-500 text-green-500 font-black text-xl px-3 py-1 opacity-30 rounded-lg uppercase tracking-widest rotate-12 pointer-events-none">
+                    Paid
+                  </div>
+
+                  <div className="text-center border-b border-dashed border-slate-200 dark:border-slate-700 pb-4 mb-4">
+                    <h2 className="font-extrabold text-xl dark:text-white tracking-tight">Market<span className="text-brand-600">Store</span></h2>
+                    <p className="text-xs text-slate-500 mt-1">Official Digital Receipt</p>
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Order ID</span>
+                      <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">{o.id.split('-')[0].toUpperCase()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Date</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{new Date(o.created_at).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Item</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{o.item_title} (x{o.quantity || 1})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">{tab === 'mine' ? 'Seller' : 'Buyer'}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{counterparty}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Item Subtotal</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">K{(o.total_zmw - o.delivery_fee_zmw).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Delivery Fee</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">K{o.delivery_fee_zmw}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="font-bold text-slate-900 dark:text-white">Total Paid</span>
+                      <span className="font-extrabold text-xl text-brand-600">K{o.total_zmw}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <p className="text-[10px] text-slate-400">Verified via Delivery Code: {o.delivery_code}</p>
+                  </div>
+                </div>
+              );
+            }
+
+            const counterparty = tab === 'mine' ? o.seller_name : o.buyer_name;
+
+            if (o.status === 'delivered') {
+              return (
+                <div key={o.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm relative overflow-hidden">
+                  {/* PAID Stamp */}
+                  <div className="absolute top-6 right-6 border-4 border-green-500 text-green-500 font-black text-xl px-3 py-1 opacity-30 rounded-lg uppercase tracking-widest rotate-12 pointer-events-none">
+                    Paid
+                  </div>
+
+                  <div className="text-center border-b border-dashed border-slate-200 dark:border-slate-700 pb-4 mb-4">
+                    <h2 className="font-extrabold text-xl dark:text-white tracking-tight">Market<span className="text-brand-600">Store</span></h2>
+                    <p className="text-xs text-slate-500 mt-1">Official Digital Receipt</p>
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Order ID</span>
+                      <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">{o.id.split('-')[0].toUpperCase()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Date</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{new Date(o.created_at).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Item</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{o.item_title} (x{o.quantity || 1})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">{tab === 'mine' ? 'Seller' : 'Buyer'}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{counterparty}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Item Subtotal</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">K{(o.total_zmw - o.delivery_fee_zmw).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Delivery Fee</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">K{o.delivery_fee_zmw}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="font-bold text-slate-900 dark:text-white">Total Paid</span>
+                      <span className="font-extrabold text-xl text-brand-600">K{o.total_zmw}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <p className="text-[10px] text-slate-400">Verified via Delivery Code: {o.delivery_code}</p>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={o.id} className="bg-white rounded-2xl border border-gray-200 p-5">
                 <div className="flex justify-between items-start mb-3">
@@ -209,7 +332,60 @@ export default function OrdersPage() {
                       View item
                     </Link>
                   </div>
-                </div>
+                
+      {/* Premium Delivery Code Modal */}
+      {deliveryModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white text-center mb-2">Confirm Delivery</h2>
+            <p className="text-sm text-slate-500 text-center mb-6">Ask the buyer for their 6-digit code to complete the order.</p>
+            
+            <input
+              type="text"
+              maxLength={6}
+              placeholder="000000"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, ''))}
+              className="w-full text-center text-3xl tracking-[0.5em] font-extrabold px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/20 outline-none transition mb-2"
+              autoFocus
+            />
+            
+            {codeError ? (
+              <p className="text-red-500 text-xs font-semibold text-center mb-4">{codeError}</p>
+            ) : <div className="mb-4"></div>}
+
+            
+            <label className="flex items-start gap-3 mb-6 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={cashReceived}
+                onChange={(e) => setCashReceived(e.target.checked)}
+                className="mt-0.5 w-5 h-5 rounded text-brand-600 focus:ring-brand-500" 
+              />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 leading-tight">
+                I confirm I have received the cash payment from the buyer.
+              </span>
+            </label>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeliveryModalOpen(false)}
+                className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => updateStatus(modalOrderId, 'delivered', codeInput)}
+                disabled={codeInput.length !== 6 || busyId === modalOrderId || !cashReceived}
+                className="flex-1 py-3 rounded-xl font-bold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition shadow-lg shadow-brand-500/30"
+              >
+                {busyId === modalOrderId ? 'Verifying...' : 'Verify'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+</div>
               </div>
             );
           })}

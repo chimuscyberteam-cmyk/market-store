@@ -98,5 +98,17 @@ router.post('/become-seller', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+// Mock Pro Subscription Route
+router.post('/subscribe-pro', requireAuth, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET subscription_tier = 'pro' WHERE id = $1 RETURNING id, email, full_name, role, subscription_tier`,
+      [req.user.sub]
+    );
+    res.json({ user: rows[0] });
+  } catch (err) { next(err); }
+});
+
 export default router;
 

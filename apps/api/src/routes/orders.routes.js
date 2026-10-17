@@ -116,6 +116,8 @@ router.get('/selling', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+
 // Update order status — only seller or buyer of that order
 const statusSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']),
@@ -128,7 +130,7 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
     const me = req.user.sub;
 
     const { rows: existing } = await pool.query(
-      `SELECT id, buyer_id, seller_id, status, item_id FROM orders WHERE id = $1`,
+      `SELECT id, buyer_id, seller_id, status, item_id, delivery_code, payment_method FROM orders WHERE id = $1`,
       [req.params.id]
     );
     const order = existing[0];
@@ -136,37 +138,36 @@ router.patch('/:id/status', requireAuth, async (req, res, next) => {
 
     const isSeller = order.seller_id === me;
     const isBuyer = order.buyer_id === me;
+    
     if (!isSeller && !isBuyer) return res.status(403).json({ error: 'Not your order' });
-
-    // Rules:
-    //  - seller can move pending -> confirmed -> delivered, or cancel pending
-    //  - buyer can only cancel while pending
     if (status === 'confirmed' && !isSeller) return res.status(403).json({ error: 'Only seller can confirm' });
     if (status === 'delivered' && !isSeller) return res.status(403).json({ error: 'Only seller can mark delivered' });
+    
+    // 🚨 THE CRITICAL SECURITY CHECK 🚨
+    if (status === 'delivered') {
+      if (!code) return res.status(400).json({ error: 'Delivery code is required' });
+      if (String(order.delivery_code) !== String(code)) {
+        return res.status(400).json({ error: 'Invalid delivery code. Ask the buyer for the 6-digit code.' });
+      }
+    }
+
     if (status === 'cancelled' && order.status !== 'pending') {
       return res.status(400).json({ error: 'Can only cancel pending orders' });
     }
 
-    const paymentStatus = status === 'delivered' && order.payment_method === 'pod'
-      ? 'paid'
-      : undefined;
+    const paymentStatus = status === 'delivered' && order.payment_method === 'pod' ? 'paid' : undefined;
 
     const { rows } = await pool.query(
       paymentStatus
         ? `UPDATE orders SET status = $1, payment_status = $2 WHERE id = $3 RETURNING *`
         : `UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`,
-      paymentStatus
-        ? [status, paymentStatus, req.params.id]
-        : [status, req.params.id]
+      paymentStatus ? [status, paymentStatus, req.params.id] : [status, req.params.id]
     );
+    
     if (!rows[0]) return res.status(404).json({ error: 'Order not found' });
 
-    // Auto-mark the item as sold when its order is delivered
     if (status === 'delivered') {
-      await pool.query(
-        `UPDATE items SET status = 'sold' WHERE id = $1`,
-        [order.item_id]
-      );
+      await pool.query(`UPDATE items SET status = 'sold' WHERE id = $1`, [order.item_id]);
     }
 
     res.json({ order: rows[0] });

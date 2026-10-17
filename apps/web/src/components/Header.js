@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { useTheme } from './ThemeProvider';
+import { toast } from 'sonner';
 
 function Avatar({ name }) {
   const initial = name?.[0]?.toUpperCase() ?? '?';
@@ -23,6 +24,7 @@ export default function Header() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
+  const prevCountRef = useRef(0);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -48,6 +50,7 @@ export default function Header() {
   useEffect(() => {
     if (!user) { setUnreadCount(0); return; }
     let cancelled = false;
+    
     async function fetchUnread() {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://market-store-api.onrender.com'}/api/chat/unread-count`, {
@@ -55,9 +58,20 @@ export default function Header() {
         });
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setUnreadCount(data?.count || 0);
-      } catch {}
+        
+        if (!cancelled) {
+          const newCount = data?.count || 0;
+          
+          if (newCount > prevCountRef.current) {
+            toast.info('📩 You have a new message!');
+          }
+          
+          setUnreadCount(newCount);
+          prevCountRef.current = newCount;
+        }
+      } catch (err) {}
     }
+    
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => { cancelled = true; clearInterval(interval); };

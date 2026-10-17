@@ -16,5 +16,16 @@ export function distanceMeters(a, b) {
 
 export function deliveryFee(distanceM) {
   if (!Number.isFinite(distanceM) || distanceM <= 0) return 0;
-  return Math.ceil(distanceM / BLOCK_METERS) * FEE_PER_BLOCK_ZMW;
+  
+  // Calculate proportional fee
+  const rawFee = (distanceM / BLOCK_METERS) * FEE_PER_BLOCK_ZMW;
+  
+  // Round to nearest whole number (no decimals)
+  let fee = Math.round(rawFee);
+  
+  // Optional: Set a minimum fee for any delivery (e.g., K2)
+  // If you want 0m to be K0 and 10m to be K1, change this to 0.
+  if (fee < 2) fee = 2; 
+  
+  return fee;
 }

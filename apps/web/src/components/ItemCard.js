@@ -19,6 +19,12 @@ export default function ItemCard({ item }) {
       href={`/items/${item.id}`}
       className="card-premium flex flex-col overflow-hidden group"
     >
+        {item.is_featured && (
+          <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md z-10 flex items-center gap-1">
+            ⭐ Featured
+          </div>
+        )}
+
       <div className="relative aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
         {img ? (
           <img

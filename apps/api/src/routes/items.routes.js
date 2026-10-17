@@ -43,7 +43,7 @@ router.get('/', async (req, res, next) => {
        JOIN categories c ON c.id = i.category_id
        JOIN users u ON u.id = i.seller_id
        WHERE ${where.join(' AND ')}
-       ORDER BY i.created_at DESC
+       ORDER BY i.is_featured DESC, i.created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
@@ -106,6 +106,20 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
       [priceZmw, quantity, req.params.id, req.user.sub]
     );
     
+    if (!rows[0]) return res.status(404).json({ error: 'Item not found or not yours' });
+    res.json({ item: rows[0] });
+  } catch (err) { next(err); }
+});
+
+
+// Mock Boost Route (We will replace with real payment later)
+router.post('/:id/boost', requireAuth, async (req, res, next) => {
+  try {
+    // In the future, verify payment here.
+    const { rows } = await pool.query(
+      `UPDATE items SET is_featured = true WHERE id = $1 AND seller_id = $2 RETURNING *`,
+      [req.params.id, req.user.sub]
+    );
     if (!rows[0]) return res.status(404).json({ error: 'Item not found or not yours' });
     res.json({ item: rows[0] });
   } catch (err) { next(err); }
