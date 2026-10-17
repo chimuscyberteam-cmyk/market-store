@@ -107,6 +107,17 @@ export async function apiFetch(path, {
       || (res.status === 502 || res.status === 503 || res.status === 504
         ? 'Server is waking up. Please try again in a moment.'
         : `Request failed (${res.status})`);
+    
+    if (res.status === 401 || res.status === 403) {
+      // Token expired or invalid -> Clear session and redirect
+      localStorage.removeItem('ms.accessToken');
+      localStorage.removeItem('ms.refreshToken');
+      localStorage.removeItem('ms.user');
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+        window.location.href = '/login?expired=true';
+      }
+    }
+
     throw new Error(message);
   }
   return data;

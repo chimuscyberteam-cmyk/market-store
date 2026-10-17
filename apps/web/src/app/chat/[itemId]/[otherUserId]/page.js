@@ -135,7 +135,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 220px)', minHeight: '500px' }}>
+    <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-140px)] md:h-[calc(100vh-200px)] min-h-[500px] mb-4">
       <div className="bg-white dark:bg-gray-900 rounded-t-2xl border border-gray-100 dark:border-gray-800 border-b-0 p-4 flex items-center gap-3">
         <Link href="/messages" className="text-gray-500 hover:text-brand-600 text-lg shrink-0">
           ←
@@ -217,7 +217,7 @@ export default function ChatPage() {
 
       <form
         onSubmit={send}
-        className="bg-white dark:bg-gray-900 rounded-b-2xl border border-gray-100 dark:border-gray-800 border-t-0 p-3 flex gap-2"
+        className="bg-white dark:bg-gray-900 rounded-b-2xl border border-gray-100 dark:border-gray-800 border-t-0 p-3 flex gap-2 pb-6 md:pb-3 shadow-sm"
       >
         <input
           type="text"
