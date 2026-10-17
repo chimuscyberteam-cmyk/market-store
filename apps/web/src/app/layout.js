@@ -21,7 +21,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.className + " bg-[#f8fafc] text-slate-900 min-h-screen antialiased"}>
+      <body className={inter.className + " bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen antialiased"}>
         <ThemeProvider>
           <AuthProvider>
             <Header />

@@ -106,7 +106,7 @@ function HomeInner() {
                 className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl transition ${
                   active
                     ? 'bg-brand-600 text-white shadow-card'
-                    : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-card'
+                    : 'bg-white dark:bg-gradient-to-br from-brand-700 to-brand-900 border border-gray-100 dark:border-gray-800 hover:shadow-card'
                 }`}
               >
                 <span className="text-2xl">{c.icon}</span>
@@ -170,7 +170,7 @@ function SkeletonGrid() {
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800"
+          className="bg-white dark:bg-gradient-to-br from-brand-700 to-brand-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800"
         >
           <div className="aspect-square bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
           <div className="p-3 space-y-2">
