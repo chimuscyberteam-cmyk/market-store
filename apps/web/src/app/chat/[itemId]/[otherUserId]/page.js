@@ -22,6 +22,7 @@ export default function ChatPage() {
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
   const [connected, setConnected] = useState(false);
+  
   const [editingId, setEditingId] = useState(null);
   const [editBody, setEditBody] = useState('');
   const [deleteMsgId, setDeleteMsgId] = useState(null);
@@ -132,15 +133,10 @@ export default function ChatPage() {
   function saveEdit(id) {
     const text = editBody.trim();
     if (!text) return;
-    
-    // Instantly disappear from the UI
     setEditingId(null);
-    
-    // Send to backend in the background
     socketRef.current.emit('chat:edit', { messageId: id, body: text, itemId, otherUserId }, (res) => {
       if (res?.error) toast.error(res.error);
     });
-  }
   }
 
   function confirmDelete(id) {
@@ -186,7 +182,7 @@ export default function ChatPage() {
           return (
             <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
               <div
-                onClick={() => { if (mine && !m.is_deleted) setSelectedMsgId(m.id === selectedMsgId ? null : m.id); }}
+                onClick={() => { if (mine && !m.is_deleted && !editingId) setSelectedMsgId(m.id === selectedMsgId ? null : m.id); }}
                 className={`max-w-[75%] px-4 py-2.5 rounded-2xl animate-in ${
                   mine
                     ? 'bg-brand-600 text-white rounded-br-md cursor-pointer active:scale-[0.98] transition-transform'
@@ -194,17 +190,21 @@ export default function ChatPage() {
                 }`}
               >
                 {editingId === m.id ? (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-3 min-w-[220px]">
                     <input
                       type="text"
-                      className="text-black px-2 py-1 rounded text-sm w-full outline-none"
+                      className="w-full px-3 py-2 rounded-lg text-sm text-slate-900 bg-white border-none focus:outline-none focus:ring-2 focus:ring-white/50 shadow-sm"
                       value={editBody}
                       onChange={(e) => setEditBody(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit(m.id);
+                        if (e.key === 'Escape') setEditingId(null);
+                      }}
                       autoFocus
                     />
-                    <div className="flex gap-2 justify-end text-xs font-semibold">
-                      <button type="button" onClick={() => setEditingId(null)} className="text-white/70 hover:text-white">Cancel</button>
-                      <button type="button" onClick={() => saveEdit(m.id)} className="text-white hover:underline">Save</button>
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-white/20 hover:bg-white/30 transition">Cancel</button>
+                      <button type="button" onClick={() => saveEdit(m.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-brand-700 bg-white hover:bg-slate-100 transition shadow-sm">Save</button>
                     </div>
                   </div>
                 ) : (
@@ -221,10 +221,12 @@ export default function ChatPage() {
                     )}
                   </>
                 )}
-                <div className={`flex items-center gap-2 mt-1 text-[10px] ${mine ? 'text-green-100 justify-end' : 'text-gray-400'}`}>
-                  {m.edited_at && !m.is_deleted && <span>(edited)</span>}
-                  <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
+                {editingId !== m.id && (
+                  <div className={`flex items-center gap-2 mt-1 text-[10px] ${mine ? 'text-green-100 justify-end' : 'text-gray-400'}`}>
+                    {m.edited_at && !m.is_deleted && <span>(edited)</span>}
+                    <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
               </div>
               
               {selectedMsgId === m.id && !m.image_url && (
