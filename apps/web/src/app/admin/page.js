@@ -3,253 +3,193 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { toast } from 'sonner';
 
-const ROLE_COLORS = {
-  buyer: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  seller: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-  admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
-};
-
-export default function AdminPage() {
-  const router = useRouter();
+export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   const [tab, setTab] = useState('users');
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [auditActions, setAuditActions] = useState([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== 'admin')) router.push('/');
+    if (!authLoading) {
+      if (!user) router.push('/login');
+      else if (user.role !== 'admin') router.push('/');
+    }
   }, [authLoading, user, router]);
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') return;
-    (async () => {
-      try {
-        const [s, u, o, a] = await Promise.all([
-          apiFetch('/api/admin/stats'),
-          apiFetch('/api/admin/users'),
-          apiFetch('/api/admin/orders'),
-          apiFetch('/api/admin/audit')
-        ]);
-        setStats(s);
-        setUsers(u.users || []);
-        setOrders(o.orders || []);
-        setAuditActions(a.actions || []);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [user]);
-
-  async function changeRole(userId, role) {
-    if (!confirm(`Change role to ${role}?`)) return;
+  const loadData = async () => {
     try {
-      await apiFetch(`/api/admin/users/${userId}/role`, {
-        method: 'PATCH',
-        body: { role }
-      });
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-      // Refresh audit log
-      const a = await apiFetch('/api/admin/audit');
-      setAuditActions(a.actions || []);
+      const [statsRes, usersRes, itemsRes] = await Promise.all([
+        apiFetch('/api/admin/stats'),
+        apiFetch('/api/admin/users'),
+        apiFetch('/api/admin/items')
+      ]);
+      setStats(statsRes);
+      setUsers(usersRes.users || []);
+      setItems(itemsRes.items || []);
     } catch (e) {
-      alert(e.message);
+      toast.error('Failed to load admin data');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  if (authLoading || loading) {
-    return <div className="text-center py-20 text-gray-500">Loading…</div>;
+  useEffect(() => { if (user?.role === 'admin') loadData(); }, [user]);
+
+  const toggleSuspend = async (id) => {
+    try {
+      await apiFetch(`/api/admin/users/${id}/suspend`, { method: 'PATCH' });
+      toast.success('User status updated');
+      loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const removeItem = async (id) => {
+    if (!confirm('Are you sure you want to remove this item from the marketplace?')) return;
+    try {
+      await apiFetch(`/api/admin/items/${id}/remove`, { method: 'PATCH' });
+      toast.success('Item removed');
+      loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  if (authLoading || loading || user?.role !== 'admin') {
+    return <div className="text-center py-20 text-gray-500">Loading Admin Data…</div>;
   }
-  if (error) {
-    return <div className="text-center py-20 text-red-600 font-semibold">{error}</div>;
-  }
-  if (!user || user.role !== 'admin') return null;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-2xl font-extrabold mb-1">Admin panel</h1>
-      <p className="text-gray-500 dark:text-gray-400 mb-6">
-        Manage users, orders and platform health
-      </p>
-
-      {stats ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard label="Users" value={stats.users} icon="👥" />
-          <StatCard label="Active items" value={stats.activeItems} icon="📦" />
-          <StatCard label="Orders" value={stats.orders} icon="🛒" />
-          <StatCard label="Delivered (ZMW)" value={`K${Number(stats.deliveredRevenue).toFixed(0)}`} icon="💰" />
+    <div className="max-w-6xl mx-auto py-8 px-4">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">Admin Control Center</h1>
+          <p className="text-slate-500">Manage users, listings, and platform metrics.</p>
         </div>
-      ) : null}
-
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>
-          Users ({users.length})
-        </TabBtn>
-        <TabBtn active={tab === 'orders'} onClick={() => setTab('orders')}>
-          Orders ({orders.length})
-        </TabBtn>
-        <TabBtn active={tab === 'audit'} onClick={() => setTab('audit')}>
-          Audit ({auditActions.length})
-        </TabBtn>
       </div>
 
-      {tab === 'users' ? (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Joined</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-4 py-3 font-semibold">{u.full_name}</td>
-                    <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                    <td className="px-4 py-3 text-gray-500">{u.phone}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${ROLE_COLORS[u.role]}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={u.role}
-                        onChange={(e) => changeRole(u.id, e.target.value)}
-                        className="text-xs border rounded-lg px-2 py-1 bg-white dark:bg-gray-800 dark:border-gray-700"
-                      >
-                        <option value="buyer">buyer</option>
-                        <option value="seller">seller</option>
-                        <option value="admin">admin</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Stats Row */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <p className="text-sm font-semibold text-slate-500">Total Users</p>
+            <p className="text-3xl font-extrabold text-brand-600 mt-2">{stats.total_users}</p>
           </div>
-        </div>
-      ) : tab === 'orders' ? (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Item</th>
-                  <th className="px-4 py-3">Buyer</th>
-                  <th className="px-4 py-3">Seller</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {orders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      No orders yet
-                    </td>
-                  </tr>
-                ) : orders.map((o) => (
-                  <tr key={o.id}>
-                    <td className="px-4 py-3 font-semibold">{o.item_title}</td>
-                    <td className="px-4 py-3 text-gray-500">{o.buyer_name}</td>
-                    <td className="px-4 py-3 text-gray-500">{o.seller_name}</td>
-                    <td className="px-4 py-3 font-bold text-brand-600">K{o.total_zmw}</td>
-                    <td className="px-4 py-3 text-xs">
-                      <span className="font-bold uppercase">{o.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {new Date(o.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <p className="text-sm font-semibold text-slate-500">Active Listings</p>
+            <p className="text-3xl font-extrabold text-blue-500 mt-2">{stats.active_items}</p>
           </div>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">When</th>
-                  <th className="px-4 py-3">Admin</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Target</th>
-                  <th className="px-4 py-3">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {auditActions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      No admin actions yet
-                    </td>
-                  </tr>
-                ) : auditActions.map((a) => (
-                  <tr key={a.id}>
-                    <td className="px-4 py-3 text-xs text-gray-500">
-                      {new Date(a.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">{a.admin_name ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-bold uppercase bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                        {a.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{a.target_type ?? '—'}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500 font-mono">
-                      {JSON.stringify(a.metadata).slice(0, 60)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <p className="text-sm font-semibold text-slate-500">Total Orders</p>
+            <p className="text-3xl font-extrabold text-amber-500 mt-2">{stats.total_orders}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <p className="text-sm font-semibold text-slate-500">Total Revenue</p>
+            <p className="text-3xl font-extrabold text-emerald-500 mt-2">K{stats.total_revenue}</p>
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function StatCard({ label, value, icon }) {
-  return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4">
-      <div className="text-2xl">{icon}</div>
-      <p className="text-2xl font-extrabold mt-1">{value}</p>
-      <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-    </div>
-  );
-}
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <button
+          onClick={() => setTab('users')}
+          className={`px-5 py-2.5 rounded-xl font-bold text-sm transition ${tab === 'users' ? 'bg-brand-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+        >
+          Manage Users
+        </button>
+        <button
+          onClick={() => setTab('listings')}
+          className={`px-5 py-2.5 rounded-xl font-bold text-sm transition ${tab === 'listings' ? 'bg-brand-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+        >
+          Manage Listings
+        </button>
+      </div>
 
-function TabBtn({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-        active
-          ? 'bg-brand-600 text-white'
-          : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
-      }`}
-    >
-      {children}
-    </button>
+      {/* Tables */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        {tab === 'users' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-sm">
+                  <th className="p-4 font-semibold">Name</th>
+                  <th className="p-4 font-semibold">Email</th>
+                  <th className="p-4 font-semibold">Role</th>
+                  <th className="p-4 font-semibold">Status</th>
+                  <th className="p-4 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {users.map(u => (
+                  <tr key={u.id} className="text-sm dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <td className="p-4 font-bold text-slate-900 dark:text-white">{u.full_name}</td>
+                    <td className="p-4">{u.email}</td>
+                    <td className="p-4 capitalize">{u.role}</td>
+                    <td className="p-4">
+                      {u.suspended_until && new Date(u.suspended_until) > new Date() ? (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold">Suspended</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold">Active</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <button
+                        onClick={() => toggleSuspend(u.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${u.suspended_until && new Date(u.suspended_until) > new Date() ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                      >
+                        {u.suspended_until && new Date(u.suspended_until) > new Date() ? 'Unsuspend' : 'Suspend 7 Days'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {tab === 'listings' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-sm">
+                  <th className="p-4 font-semibold">Item</th>
+                  <th className="p-4 font-semibold">Seller</th>
+                  <th className="p-4 font-semibold">Price</th>
+                  <th className="p-4 font-semibold">Status</th>
+                  <th className="p-4 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {items.map(i => (
+                  <tr key={i.id} className="text-sm dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <td className="p-4 font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      {i.is_featured && <span>⭐</span>}
+                      {i.title}
+                    </td>
+                    <td className="p-4">{i.seller_name}</td>
+                    <td className="p-4 font-semibold text-brand-600">K{i.price_zmw}</td>
+                    <td className="p-4 capitalize">{i.status}</td>
+                    <td className="p-4">
+                      {i.status === 'active' && (
+                        <button
+                          onClick={() => removeItem(i.id)}
+                          className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-xs font-bold transition"
+                        >
+                          Force Remove
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
