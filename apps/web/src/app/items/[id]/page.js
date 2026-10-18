@@ -143,6 +143,17 @@ export default function ItemDetail() {
           <div className="mt-6">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">Description</h3>
             <p className="text-gray-700 dark:text-gray-400 mt-1 whitespace-pre-wrap">{item.description || 'No description provided'}</p>
+
+          <div className="mt-6">
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">Seller</h3>
+            <p className="text-gray-900 dark:text-white flex items-center gap-1 font-semibold">
+              {item.seller_name}
+              {item.is_verified && <span className="text-blue-500 text-lg" title="Verified Seller">✔️</span>}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Located at {Number(item.latitude).toFixed(4)}, {Number(item.longitude).toFixed(4)}
+            </p>
+          </div>
           </div>
 
           <div className="mt-8 flex flex-col gap-3">

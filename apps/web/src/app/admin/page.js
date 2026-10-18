@@ -130,7 +130,7 @@ export default function AdminDashboard() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
         {tab === 'users' && (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[700px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-sm">
                   <th className="p-4 font-semibold">Name</th>
@@ -142,7 +142,7 @@ export default function AdminDashboard() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {users.map(u => (
                   <tr key={u.id} className="text-sm dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="p-4">
+                    <td className="p-4 sticky left-0 bg-white dark:bg-slate-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                       <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
                         {u.full_name}
                         {u.is_verified && <span className="text-blue-500 text-lg" title="Verified Seller">✔️</span>}

@@ -22,7 +22,7 @@ router.get('/stats', requireAuth, requireRole('admin'), async (req, res, next) =
 router.get('/users', requireAuth, requireRole('admin'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
-      SELECT id, full_name, email, phone, role, subscription_tier, suspended_until, created_at
+      SELECT id, full_name, email, phone, role, subscription_tier, suspended_until, is_verified, created_at
       FROM users ORDER BY created_at DESC
     `);
     res.json({ users: rows });
