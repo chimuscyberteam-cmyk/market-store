@@ -13,8 +13,8 @@ export const authLimiter = rateLimit({
 // 2. General limiter for normal app usage
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: { error: 'Too many requests. Please slow down.' },
+  max: 1000, // Limit each IP to 1000 requests per windowMs
+  message: { error: 'Too many requests from this network. Please wait a few minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
