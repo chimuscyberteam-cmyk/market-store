@@ -69,4 +69,23 @@ router.patch('/items/:id/remove', requireAuth, requireRole('admin'), async (req,
   } catch (err) { next(err); }
 });
 
+
+// Change User Role
+router.patch('/users/:id/role', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const { role } = req.body;
+    if (!['buyer', 'seller', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+    const { rows } = await pool.query('UPDATE users SET role = $1 WHERE id = $2 RETURNING *', [role, req.params.id]);
+    res.json({ user: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// Toggle Blue Tick
+router.patch('/users/:id/verify', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('UPDATE users SET is_verified = NOT is_verified WHERE id = $1 RETURNING *', [req.params.id]);
+    res.json({ user: rows[0] });
+  } catch (err) { next(err); }
+});
+
 export default router;

@@ -38,7 +38,7 @@ router.get('/', async (req, res, next) => {
     if (q) { params.push(`%${q}%`); where.push(`(i.title ILIKE $${params.length} OR i.description ILIKE $${params.length})`); }
     params.push(Math.min(Number(limit) || 50, 100), Number(offset) || 0);
     const { rows } = await pool.query(
-      `SELECT i.*, c.slug AS category_slug, c.name AS category_name, u.full_name AS seller_name
+      `SELECT i.*, c.slug AS category_slug, c.name AS category_name, u.full_name AS seller_name, u.is_verified
        FROM items i
        JOIN categories c ON c.id = i.category_id
        JOIN users u ON u.id = i.seller_id
@@ -64,7 +64,7 @@ router.get('/:id', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT i.*, c.slug AS category_slug, c.name AS category_name,
-              u.id AS seller_id, u.full_name AS seller_name
+              u.id AS seller_id, u.full_name AS seller_name, u.is_verified
        FROM items i
        JOIN categories c ON c.id = i.category_id
        JOIN users u ON u.id = i.seller_id

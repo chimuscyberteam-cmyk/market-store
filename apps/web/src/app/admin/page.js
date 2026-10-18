@@ -41,6 +41,23 @@ export default function AdminDashboard() {
 
   useEffect(() => { if (user?.role === 'admin') loadData(); }, [user]);
 
+  
+  const changeRole = async (id, newRole) => {
+    try {
+      await apiFetch(`/api/admin/users/${id}/role`, { method: 'PATCH', body: { role: newRole } });
+      toast.success('Role updated successfully');
+      loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const toggleVerify = async (id) => {
+    try {
+      await apiFetch(`/api/admin/users/${id}/verify`, { method: 'PATCH' });
+      toast.success('Verification status updated');
+      loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
   const toggleSuspend = async (id) => {
     try {
       await apiFetch(`/api/admin/users/${id}/suspend`, { method: 'PATCH' });
@@ -117,18 +134,32 @@ export default function AdminDashboard() {
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-sm">
                   <th className="p-4 font-semibold">Name</th>
-                  <th className="p-4 font-semibold">Email</th>
-                  <th className="p-4 font-semibold">Role</th>
+                  <th className="p-4 font-semibold">Role / Badge</th>
                   <th className="p-4 font-semibold">Status</th>
-                  <th className="p-4 font-semibold">Action</th>
+                  <th className="p-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {users.map(u => (
                   <tr key={u.id} className="text-sm dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="p-4 font-bold text-slate-900 dark:text-white">{u.full_name}</td>
-                    <td className="p-4">{u.email}</td>
-                    <td className="p-4 capitalize">{u.role}</td>
+                    <td className="p-4">
+                      <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                        {u.full_name}
+                        {u.is_verified && <span className="text-blue-500 text-lg" title="Verified Seller">✔️</span>}
+                      </p>
+                      <p className="text-xs text-slate-500">{u.email}</p>
+                    </td>
+                    <td className="p-4">
+                      <select 
+                        value={u.role} 
+                        onChange={(e) => changeRole(u.id, e.target.value)}
+                        className="bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block w-full p-2 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                      >
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
                     <td className="p-4">
                       {u.suspended_until && new Date(u.suspended_until) > new Date() ? (
                         <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold">Suspended</span>
@@ -136,12 +167,18 @@ export default function AdminDashboard() {
                         <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold">Active</span>
                       )}
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => toggleVerify(u.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${u.is_verified ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      >
+                        {u.is_verified ? 'Remove Tick' : 'Give Tick'}
+                      </button>
                       <button
                         onClick={() => toggleSuspend(u.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${u.suspended_until && new Date(u.suspended_until) > new Date() ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${u.suspended_until && new Date(u.suspended_until) > new Date() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
                       >
-                        {u.suspended_until && new Date(u.suspended_until) > new Date() ? 'Unsuspend' : 'Suspend 7 Days'}
+                        {u.suspended_until && new Date(u.suspended_until) > new Date() ? 'Unsuspend' : 'Suspend'}
                       </button>
                     </td>
                   </tr>
