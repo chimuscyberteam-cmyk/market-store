@@ -29,13 +29,53 @@ const registerSchema = z.object({
 });
 
 
+
 router.post('/register', async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
     
-    // 1. Check for existing Email
+    // Explicitly check for duplicate email
     if (await findUserByEmail(data.email)) {
-      return res.status(409).json({ error: 'This email is already registered. Please log in.' });
+      return res.status(409).json({ error: 'This email is already registered.' });
+    }
+
+    // Explicitly check for duplicate phone
+    const phoneCheck = await pool.query('SELECT id FROM users WHERE phone = $1', [data.phone]);
+    if (phoneCheck.rows.length > 0) {
+      return res.status(409).json({ error: 'This phone number is already in use.' });
+    }
+
+    const user = await createUser(data);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = sha256(code);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    await pool.query('INSERT INTO email_verifications (user_id, code_hash, expires_at) VALUES ($1, $2, $3)', [user.id, codeHash, expiresAt]);
+    await sendVerificationCodeEmail({ to: user.email, name: user.full_name, code });
+
+    res.status(201).json({ user, message: 'Verification code sent to email.' });
+  } catch (err) { next(err); }
+});
+
+// 2. Add the Resend Verification Route
+router.post('/resend-verification', async (req, res, next) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.is_email_verified) return res.status(400).json({ error: 'Email is already verified. Please log in.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = sha256(code);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    await pool.query('DELETE FROM email_verifications WHERE user_id = $1', [user.id]);
+    await pool.query('INSERT INTO email_verifications (user_id, code_hash, expires_at) VALUES ($1, $2, $3)', [user.id, codeHash, expiresAt]);
+    await sendVerificationCodeEmail({ to: user.email, name: user.full_name, code });
+
+    res.json({ message: 'New verification code sent.' });
+  } catch (err) { next(err); }
+});
     }
 
     // 2. Check for existing Phone
