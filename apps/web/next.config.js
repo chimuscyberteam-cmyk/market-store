@@ -19,9 +19,12 @@ const nextConfig = {
             value: 'strict-origin-when-cross-origin',
           },
           {
-            // This Content Security Policy allows your own domain, Cloudinary for images, and Render for API calls.
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self)',
+          },
+          {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.googleusercontent.com; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://market-store-api.onrender.com wss://market-store-api.onrender.com;",
+            value: "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.googleusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://market-store-api.onrender.com wss://market-store-api.onrender.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none';",
           },
         ],
       },
