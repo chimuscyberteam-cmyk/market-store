@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
+import NetworkStatus from '@/components/NetworkStatus';
 const inter = Inter({ subsets: ['latin'] });
 import './globals.css';
 import Header from '@/components/Header';
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
             <Header />
             <main className="max-w-6xl mx-auto px-4 py-6">{children}
 
+        <NetworkStatus />
         <Toaster 
           position="top-right" 
           expand={false} 

@@ -30,11 +30,56 @@ const registerSchema = z.object({
   role: z.enum(['buyer', 'seller']).optional()
 });
 
+
 router.post('/register', async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
     if (await findUserByEmail(data.email)) {
       return res.status(409).json({ error: 'Email already registered' });
+    }
+    const user = await createUser(data);
+    
+    // Generate 6-digit code
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = sha256(code);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    // Save to DB
+    await pool.query('INSERT INTO email_verifications (user_id, code_hash, expires_at) VALUES ($1, $2, $3)', [user.id, codeHash, expiresAt]);
+    
+    // Send email
+    await sendVerificationCodeEmail({ to: user.email, name: user.full_name, code });
+
+    // CRITICAL: Do NOT send tokens here. Force them to verify.
+    res.status(201).json({ user, message: 'Verification code sent to email.' });
+  } catch (err) { next(err); }
+});
+
+// Add the Verify Email Route
+router.post('/verify-email', async (req, res, next) => {
+  try {
+    const { email, code } = z.object({ email: z.string().email(), code: z.string().length(6) }).parse(req.body);
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    const { rows } = await pool.query(
+      'SELECT id, code_hash, expires_at FROM email_verifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [user.id]
+    );
+    const session = rows[0];
+    if (!session) return res.status(400).json({ error: 'No verification code found' });
+    if (new Date(session.expires_at) < new Date()) return res.status(400).json({ error: 'Code expired' });
+    if (session.code_hash !== sha256(code)) return res.status(400).json({ error: 'Invalid code' });
+
+    // Mark verified
+    await pool.query('UPDATE users SET is_email_verified = true WHERE id = $1', [user.id]);
+    await pool.query('DELETE FROM email_verifications WHERE user_id = $1', [user.id]);
+    
+    // NOW issue tokens
+    const tokens = await issueTokens(user);
+    res.json({ user, ...tokens });
+  } catch (err) { next(err); }
+});
     }
     const user = await createUser(data);
     const tokens = await issueTokens(user);

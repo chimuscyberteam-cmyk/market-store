@@ -111,6 +111,19 @@ export default function RegisterPage() {
           </div>
         ) : null}
 
+        
+        <div className="flex items-start gap-3 mt-6 mb-2">
+          <input
+            type="checkbox"
+            id="terms"
+            required
+            className="mt-1 w-4 h-4 rounded text-brand-600 focus:ring-brand-500 cursor-pointer"
+          />
+          <label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+            I agree to the <a href="/terms" target="_blank" className="text-brand-600 font-semibold hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-brand-600 font-semibold hover:underline">Privacy Policy</a>.
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={busy}
