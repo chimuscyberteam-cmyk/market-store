@@ -28,11 +28,36 @@ const registerSchema = z.object({
   role: z.enum(['buyer', 'seller']).optional()
 });
 
+
 router.post('/register', async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
+    
+    // 1. Check for existing Email
     if (await findUserByEmail(data.email)) {
-      return res.status(409).json({ error: 'Email already registered' });
+      return res.status(409).json({ error: 'This email is already registered. Please log in.' });
+    }
+
+    // 2. Check for existing Phone
+    const phoneCheck = await pool.query('SELECT id FROM users WHERE phone = $1', [data.phone]);
+    if (phoneCheck.rows.length > 0) {
+      return res.status(409).json({ error: 'This phone number is already in use.' });
+    }
+
+    // 3. Create the user
+    const user = await createUser(data);
+    
+    // Generate 6-digit code
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    await pool.query('INSERT INTO email_verifications (user_id, code_hash, expires_at) VALUES ($1, $2, $3)', [user.id, codeHash, expiresAt]);
+    await sendVerificationCodeEmail({ to: user.email, name: user.full_name, code });
+
+    res.status(201).json({ user, message: 'Verification code sent to email.' });
+  } catch (err) { next(err); }
+});
     }
     const user = await createUser(data);
     
