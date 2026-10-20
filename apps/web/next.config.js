@@ -24,7 +24,8 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.googleusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://market-store-api.onrender.com wss://market-store-api.onrender.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none';",
+            // We added https://api.cloudinary.com to connect-src
+            value: "default-src 'self'; img-src 'self' data: https://res.cloudinary.com https://*.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://market-store-api.onrender.com wss://market-store-api.onrender.com https://api.cloudinary.com; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none';",
           },
         ],
       },
