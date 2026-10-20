@@ -14,7 +14,6 @@ function VerifyContent() {
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
-  // Countdown timer for resend button
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -30,11 +29,9 @@ function VerifyContent() {
         method: 'POST',
         body: { email, code }
       });
-      
       localStorage.setItem('ms.accessToken', res.accessToken);
       localStorage.setItem('ms.refreshToken', res.refreshToken);
       localStorage.setItem('ms.user', JSON.stringify(res.user));
-      
       toast.success('Email verified successfully! Welcome.');
       router.push('/');
       router.refresh();
@@ -53,8 +50,8 @@ function VerifyContent() {
         method: 'POST',
         body: { email }
       });
-      toast.success('A new 6-digit code has been sent to your email.');
-      setCooldown(60); // Start 60-second cooldown
+      toast.success('A new 6-digit code has been sent.');
+      setCooldown(60);
     } catch (err) {
       toast.error(err.message);
     } finally {
