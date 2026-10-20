@@ -241,7 +241,8 @@ router.post('/change-password', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Delete Account (Requires password)
+
+// Delete Account (Soft Delete - Anonymizes data but keeps order history intact)
 router.delete('/account', requireAuth, async (req, res, next) => {
   try {
     const { password } = z.object({ password: z.string().min(1) }).parse(req.body);
@@ -249,6 +250,38 @@ router.delete('/account', requireAuth, async (req, res, next) => {
     const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.sub]);
     const user = rows[0];
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const bcrypt = await import('bcryptjs');
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) return res.status(401).json({ error: 'Incorrect password' });
+
+    // 1. Generate unique dummy data so the real email/phone are freed up
+    const randomSuffix = crypto.randomBytes(4).toString('hex');
+    const dummyEmail = `deleted_${randomSuffix}@deleted.local`;
+    const dummyPhone = `deleted_${randomSuffix}`;
+    const dummyPassword = await bcrypt.hash('DELETED_' + randomSuffix, 10);
+
+    // 2. Anonymize the user
+    await pool.query(
+      `UPDATE users 
+       SET full_name = 'Deleted User', 
+           email = $1, 
+           phone = $2, 
+           password_hash = $3,
+           is_email_verified = false
+       WHERE id = $4`,
+      [dummyEmail, dummyPhone, dummyPassword, req.user.sub]
+    );
+
+    // 3. Remove their active items from the marketplace
+    await pool.query(`UPDATE items SET status = 'removed' WHERE seller_id = $1 AND status = 'active'`, [req.user.sub]);
+
+    // 4. Revoke all their active sessions
+    await pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [req.user.sub]);
+
+    res.json({ message: 'Account deleted and anonymized successfully.' });
+  } catch (err) { next(err); }
+});
 
     const bcrypt = await import('bcryptjs');
     const isValid = await bcrypt.compare(password, user.password_hash);
