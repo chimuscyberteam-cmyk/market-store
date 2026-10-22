@@ -53,7 +53,7 @@ export default function Header() {
     
     async function fetchUnread() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://market-store-api.onrender.com'}/api/chat/unread-count`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.mycampusmarket.shop'}/api/chat/unread-count`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('ms.accessToken') || ''}` }
         });
         if (!res.ok) return;

@@ -45,7 +45,7 @@ export default function ChatPage() {
         setItem(itemData.item);
         const history = await apiFetch(`/api/chat/${itemId}/${otherUserId}`);
         setMessages(history.messages || []);
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://market-store-api.onrender.com'}/api/chat/${itemId}/${otherUserId}/read`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.mycampusmarket.shop'}/api/chat/${itemId}/${otherUserId}/read`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${localStorage.getItem('ms.accessToken') || ''}` }
         }).catch(() => {});
