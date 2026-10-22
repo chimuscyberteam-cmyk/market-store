@@ -81,3 +81,10 @@ export async function apiFetch(endpoint, options = {}) {
     throw err;
   }
 }
+
+export function getRefreshToken() {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('ms.refreshToken');
+  }
+  return null;
+}
