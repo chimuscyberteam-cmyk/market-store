@@ -15,6 +15,7 @@ import { notFound, errorHandler } from './middleware/error.js';
 
 export function createApp() {
   const app = express();
+  app.set('trust proxy', 1); // Trust Cloudflare/Render proxy for real IP address
   
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
