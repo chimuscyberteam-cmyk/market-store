@@ -4,98 +4,70 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn } = useAuth(); // Get the signIn function from our new AuthProvider
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
-    setError(null);
     try {
-      const data = await apiFetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: { email, password },
-        auth: false
+        body: { email, password }
       });
-      signIn(data);
+      
+      // THIS IS THE CRITICAL FIX: Use signIn instead of manually saving
+      signIn(res.user, res.accessToken, res.refreshToken);
+      
+      toast.success('Logged in successfully!');
       router.push('/');
+      router.refresh();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="max-w-md mx-auto mt-12">
-      <h1 className="text-2xl font-extrabold mb-1">Welcome back</h1>
-      <p className="text-gray-500 mb-6">Sign in to buy or sell on Market Store.</p>
-
+    <div className="max-w-md mx-auto mt-20 p-6 bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800">
+      <h1 className="text-2xl font-extrabold text-center mb-6 dark:text-white">Welcome back</h1>
+      
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold mb-1">Email</label>
+          <label className="block text-sm font-semibold mb-1 dark:text-gray-300">Email</label>
           <input
             type="email"
-            required
             className="input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold mb-1">Password</label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              required
-              className="input pr-12"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xl"
-              aria-label="Toggle password"
-            >
-              {showPassword ? '🙈' : '👁️'}
-            </button>
-          </div>
+          <label className="block text-sm font-semibold mb-1 dark:text-gray-300">Password</label>
+          <input
+            type="password"
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </div>
-
-        <div className="text-right -mt-2">
-          <Link href="/forgot-password" className="text-sm text-brand-600 font-semibold hover:text-brand-700">
-            Forgot password?
-          </Link>
-        </div>
-
-        {error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
-            {error}
-          </div>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="btn-primary w-full disabled:opacity-60"
-        >
-          {busy ? 'Signing in…' : 'Sign in'}
+        <button type="submit" disabled={busy} className="w-full btn-primary py-3 mt-4 disabled:opacity-50">
+          {busy ? 'Logging in...' : 'Sign In'}
         </button>
       </form>
-
-      <p className="text-sm text-gray-600 mt-6 text-center">
-        No account?{' '}
-        <Link href="/register" className="text-brand-600 font-semibold">
-          Register
-        </Link>
+      
+      <p className="text-center text-sm text-gray-500 mt-6">
+        Don't have an account? <Link href="/register" className="text-brand-600 font-semibold hover:underline">Sign up</Link>
       </p>
     </div>
   );
