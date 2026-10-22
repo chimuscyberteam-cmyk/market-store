@@ -1,6 +1,11 @@
-import { getToken } from './auth';
-
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mycampusmarket.shop';
+
+export function getToken() {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('ms.accessToken');
+  }
+  return null;
+}
 
 export async function apiFetch(endpoint, options = {}) {
   const token = getToken();
@@ -44,11 +49,4 @@ export async function apiFetch(endpoint, options = {}) {
     }
     throw err;
   }
-}
-
-export function getToken() {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('ms.accessToken');
-  }
-  return null;
 }
