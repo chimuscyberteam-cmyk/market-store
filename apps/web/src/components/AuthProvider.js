@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext({ user: null, loading: true });
 
-export function AuthProvider({ children }) {
+// This is the critical fix: using "export default" instead of "export function"
+export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
