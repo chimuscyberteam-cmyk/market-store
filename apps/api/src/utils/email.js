@@ -6,7 +6,7 @@ const resend = new Resend(env.RESEND_API_KEY);
 export async function sendEmail({ to, subject, html }) {
   try {
     const data = await resend.emails.send({
-      from: env.EMAIL_FROM || 'Market Store <onboarding@resend.dev>',
+      from: env.EMAIL_FROM || 'Market Store <noreply@mycampusmarket.shop>',
       to,
       subject,
       html,
