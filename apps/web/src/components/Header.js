@@ -53,7 +53,9 @@ export default function Header() {
     
     async function fetchUnread() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.mycampusmarket.shop'}/api/chat/unread-count`, {
+        // Use API_URL from environment to avoid CSP issues
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.mycampusmarket.shop';
+        const res = await fetch(`${apiUrl}/api/chat/unread-count`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('ms.accessToken') || ''}` }
         });
         if (!res.ok) return;
@@ -61,11 +63,9 @@ export default function Header() {
         
         if (!cancelled) {
           const newCount = data?.count || 0;
-          
           if (newCount > prevCountRef.current) {
             toast.info('📩 You have a new message!');
           }
-          
           setUnreadCount(newCount);
           prevCountRef.current = newCount;
         }
@@ -168,11 +168,6 @@ export default function Header() {
                       <MenuLink href="/settings" icon="⚙️">
                         Settings
                       </MenuLink>
-                      {user.role === 'admin' && (
-                        <MenuLink href="/admin" icon="🛡️">
-                          Admin Dashboard
-                        </MenuLink>
-                      )}
                       <button
                         onClick={handleSignOut}
                         className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-3"
@@ -185,17 +180,18 @@ export default function Header() {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link
-                  href="/login"
-                  className="hidden sm:inline-flex text-sm font-semibold text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                >
-                  Sign in
-                </Link>
+                {/* Sign in is now the primary button for mobile */}
                 <Link
                   href="/register"
-                  className="text-sm font-semibold px-4 py-2 rounded-xl bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition"
+                  className="hidden sm:inline-flex text-sm font-semibold text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
                   Sign up
+                </Link>
+                <Link
+                  href="/login"
+                  className="text-sm font-semibold px-4 py-2 rounded-xl bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition"
+                >
+                  Sign in
                 </Link>
               </div>
             )}
