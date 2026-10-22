@@ -7,6 +7,39 @@ export function getToken() {
   return null;
 }
 
+export function setTokens(accessToken, refreshToken) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('ms.accessToken', accessToken);
+    localStorage.setItem('ms.refreshToken', refreshToken);
+  }
+}
+
+export function getUser() {
+  if (typeof window !== 'undefined') {
+    const userStr = localStorage.getItem('ms.user');
+    try {
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function setUser(user) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('ms.user', JSON.stringify(user));
+  }
+}
+
+export function clearTokens() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('ms.accessToken');
+    localStorage.removeItem('ms.refreshToken');
+    localStorage.removeItem('ms.user');
+  }
+}
+
 export async function apiFetch(endpoint, options = {}) {
   const token = getToken();
   
@@ -29,10 +62,8 @@ export async function apiFetch(endpoint, options = {}) {
     });
 
     if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem('ms.accessToken');
-      localStorage.removeItem('ms.refreshToken');
-      localStorage.removeItem('ms.user');
-      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+      clearTokens();
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
         window.location.href = '/login?expired=true';
       }
     }
