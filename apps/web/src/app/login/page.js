@@ -28,7 +28,13 @@ export default function LoginPage() {
       router.push('/');
       router.refresh();
     } catch (err) {
-      toast.error(err.message);
+      // UX FIX: If the backend says they need to verify, send them straight to the verify page
+      if (err.message.includes('verify your email')) {
+        toast.error(err.message);
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setBusy(false);
     }
