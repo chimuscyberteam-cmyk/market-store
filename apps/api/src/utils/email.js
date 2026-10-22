@@ -1,56 +1,52 @@
 import { Resend } from 'resend';
+import { env } from '../config/env.js';
 
-const FROM = process.env.EMAIL_FROM || 'Market Store <onboarding@resend.dev>';
+const resend = new Resend(env.RESEND_API_KEY);
 
-let resend = null;
-function getResend() {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
-  return resend;
+export async function sendEmail({ to, subject, html }) {
+  try {
+    const data = await resend.emails.send({
+      from: env.EMAIL_FROM || 'Market Store <onboarding@resend.dev>',
+      to,
+      subject,
+      html,
+    });
+    return data;
+  } catch (error) {
+    console.error('Email sending failed:', error);
+    throw error;
+  }
 }
 
 export async function sendPasswordResetCodeEmail({ to, name, code }) {
-  const client = getResend();
-  const firstName = (name || '').split(' ')[0] || 'there';
-
-  if (!client) {
-    console.log('\n===========================================');
-    console.log('  PASSWORD RESET CODE (no email sent)');
-    console.log('  To:  ', to);
-    console.log('  Code:', code);
-    console.log('===========================================\n');
-    return { ok: true, devMode: true };
-  }
-
-  const html = `
-    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#111">
-      <h1 style="font-size:22px;margin:0 0 8px">Reset your password</h1>
-      <p style="color:#555;line-height:1.5">Hi ${firstName},</p>
-      <p style="color:#555;line-height:1.5">Use the code below to reset your Market Store password.</p>
-      <div style="background:#f3f4f6;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
-        <div style="font-size:40px;font-weight:800;letter-spacing:8px;color:#059669;font-family:ui-monospace,monospace">
-          ${code}
-        </div>
+  return sendEmail({
+    to,
+    subject: 'Reset your Market Store password',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Reset your password</h2>
+        <p>Hi ${name},</p>
+        <p>We received a request to reset your Market Store password. Use the 6-digit code below to proceed:</p>
+        <h1 style="font-size: 32px; letter-spacing: 5px; background: #f4f4f4; padding: 10px; text-align: center; border-radius: 8px;">${code}</h1>
+        <p>This code will expire in 15 minutes.</p>
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
       </div>
-      <p style="color:#888;font-size:13px;line-height:1.5">
-        This code expires in 15 minutes. If you didn't request this, ignore this email.
-      </p>
-      <p style="color:#888;font-size:12px;margin-top:32px;border-top:1px solid #eee;padding-top:16px">
-        Market Store · Mulungushi University · Zambia
-      </p>
-    </div>
-  `;
+    `
+  });
+}
 
-  try {
-    const result = await client.emails.send({
-      from: FROM, to,
-      subject: 'Your Market Store verification code',
-      html
-    });
-    console.log('Email sent:', result.id);
-    return { ok: true, id: result.id };
-  } catch (err) {
-    console.error('Email send failed:', err);
-    return { ok: false, error: err.message };
-  }
+export async function sendVerificationCodeEmail({ to, name, code }) {
+  return sendEmail({
+    to,
+    subject: 'Verify your Market Store account',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Welcome to Market Store!</h2>
+        <p>Hi ${name},</p>
+        <p>Please use the 6-digit code below to verify your email address and activate your account:</p>
+        <h1 style="font-size: 32px; letter-spacing: 5px; background: #f4f4f4; padding: 10px; text-align: center; border-radius: 8px;">${code}</h1>
+        <p>This code will expire in 15 minutes.</p>
+      </div>
+    `
+  });
 }
