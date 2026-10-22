@@ -162,6 +162,12 @@ export default function Header() {
                       <MenuLink href="/my-listings" icon="🏪">
                         My listings
                       </MenuLink>
+
+                      {user.role === 'admin' && (
+                        <MenuLink href="/admin" icon="🛡️">
+                          Admin Dashboard
+                        </MenuLink>
+                      )}
                       <MenuLink href="/messages" icon="💬">
                         Messages
                       </MenuLink>

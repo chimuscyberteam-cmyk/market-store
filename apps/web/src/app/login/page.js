@@ -8,10 +8,11 @@ import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useAuth(); // Get the signIn function from our new AuthProvider
+  const { signIn } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function submit(e) {
@@ -22,10 +23,7 @@ export default function LoginPage() {
         method: 'POST',
         body: { email, password }
       });
-      
-      // THIS IS THE CRITICAL FIX: Use signIn instead of manually saving
       signIn(res.user, res.accessToken, res.refreshToken);
-      
       toast.success('Logged in successfully!');
       router.push('/');
       router.refresh();
@@ -43,25 +41,36 @@ export default function LoginPage() {
       <form onSubmit={submit} className="space-y-4">
         <div>
           <label className="block text-sm font-semibold mb-1 dark:text-gray-300">Email</label>
-          <input
-            type="email"
-            className="input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
+        
         <div>
           <label className="block text-sm font-semibold mb-1 dark:text-gray-300">Password</label>
-          <input
-            type="password"
-            className="input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              className="input pr-10"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </div>
-        <button type="submit" disabled={busy} className="w-full btn-primary py-3 mt-4 disabled:opacity-50">
+
+        <div className="flex justify-end">
+          <Link href="/forgot-password" className="text-sm font-semibold text-brand-600 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
+        <button type="submit" disabled={busy} className="w-full btn-primary py-3 mt-2 disabled:opacity-50">
           {busy ? 'Logging in...' : 'Sign In'}
         </button>
       </form>

@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('buyer');
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,13 +51,29 @@ export default function RegisterPage() {
           <label className="block text-sm font-semibold mb-1 dark:text-gray-300">Email</label>
           <input type="email" className="input" value={email} onChange={e => setEmail(e.target.value)} required />
         </div>
+        
         <div>
           <label className="block text-sm font-semibold mb-1 dark:text-gray-300">Password</label>
-          <input type="password" className="input" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
+          <div className="relative">
+            <input 
+              type={showPassword ? 'text' : 'password'} 
+              className="input pr-10" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              required 
+              minLength={8} 
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400"
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
           <p className="text-xs text-gray-500 mt-1">At least 8 characters</p>
         </div>
 
-        {/* SCROLLABLE TERMS BOX */}
         <div className="mt-6 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900">
           <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 border-b border-slate-200 dark:border-slate-700">
             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">Terms & Privacy Summary</h3>
@@ -71,15 +88,8 @@ export default function RegisterPage() {
         </div>
 
         <label className="flex items-start gap-3 mt-4 cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={agreed} 
-            onChange={e => setAgreed(e.target.checked)} 
-            className="mt-1 w-5 h-5 rounded text-brand-600 focus:ring-brand-500" 
-          />
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-            I agree to the Terms of Service and Privacy Policy.
-          </span>
+          <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-1 w-5 h-5 rounded text-brand-600 focus:ring-brand-500" />
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">I agree to the Terms of Service and Privacy Policy.</span>
         </label>
 
         <button type="submit" disabled={busy || !agreed} className="w-full btn-primary py-3 mt-4 disabled:opacity-50">
