@@ -1,37 +1,38 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { getUser, setTokens, setUser as saveUser, clearTokens } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
-const Ctx = createContext(null);
+const AuthContext = createContext({ user: null, loading: true });
 
-export default function AuthProvider({ children }) {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    setUser(getUser());
+    const storedUser = getUser();
+    setUser(storedUser);
     setLoading(false);
   }, []);
 
-  function signIn({ user, accessToken, refreshToken }) {
-    setTokens({ accessToken, refreshToken });
-    saveUser(user);
-    setUser(user);
-  }
-  function updateUser(newUser) {
-    saveUser(newUser);
-    setUser(newUser);
-  }
+  const signIn = (userData, accessToken, refreshToken) => {
+    setTokens(accessToken, refreshToken);
+    saveUser(userData);
+    setUser(userData);
+  };
 
-  function signOut() {
+  const signOut = () => {
     clearTokens();
     setUser(null);
-  }
+    router.push('/');
+  };
 
   return (
-    <Ctx.Provider value={{ user, loading, signIn, signOut, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
       {children}
-    </Ctx.Provider>
+    </AuthContext.Provider>
   );
 }
-export const useAuth = () => useContext(Ctx);
+
+export const useAuth = () => useContext(AuthContext);
